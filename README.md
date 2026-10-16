@@ -13,7 +13,14 @@ npm test
 npm run dev
 ```
 
-Visit `http://localhost:4173`. Run one of four demonstration tasks: search instances, create a mock instance, change the custom region selector, or scroll to the bottom. Actions operate only inside the local demonstration page.
+Visit `http://localhost:4173`.
+
+### Agent Mode animation
+
+Press **开始任务** (or any quick-task chip): a circular reveal expands from the trigger, then a rotating multicolor viewport frame indicates that the Agent is working. A live activity pill reports the observed turn and action. The frame is removed on completion, failure, cancellation, or exhaustion of the turn budget. The controlled page and agent decisions are unchanged; this effect is purely a Playground presentation. `prefers-reduced-motion` disables the reveal and rotation.
+
+The circular reveal is adapted from [Lucian UX/UI Prompt #045](https://lucianlabs.dev/uxui-prompt/#045), MIT License © 2026 Seokwoooo, with attribution retained in source. The viewport frame is a custom addition.
+ Run one of four demonstration tasks: search instances, create a mock instance, change the custom region selector, or scroll to the bottom. Actions operate only inside the local demonstration page.
 
 ## Workspace
 

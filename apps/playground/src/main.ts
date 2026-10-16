@@ -2,11 +2,13 @@ import { BrowserDomPage } from '../../../packages/dom-engine/src/browser-dom-pag
 import { ariaSelectAdapter } from '../../../packages/dom-engine/src/adapters/aria-select.js';
 import { DemoPlanner } from './demo-planner.js';
 import { runAgent } from '../../../packages/agent-core/src/run-agent.js';
-import type { AgentTrace, PageSnapshot } from '../../../packages/agent-core/src/types.js';
+import type { AgentTrace, PagePort, PageSnapshot } from '../../../packages/agent-core/src/types.js';
+import { AgentModeView } from './agent-mode.js';
 
 const root = document.getElementById('sandbox') as HTMLElement;
 const page = new BrowserDomPage(root, [ariaSelectAdapter]);
 const planner = new DemoPlanner();
+const agentMode = new AgentModeView();
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const text = (value: unknown) => document.createTextNode(String(value));
 let current: AbortController | null = null;
@@ -33,34 +35,73 @@ async function refreshSnapshot(): Promise<void> {
 function renderTrace(trace: AgentTrace): void {
   const action = trace.decision.kind === 'act' ? `${trace.decision.action.kind}${'ref' in trace.decision.action ? ` e${trace.decision.action.ref}` : ''}` : trace.decision.kind;
   $('timeline').prepend(entry(`#${trace.turn}  ${action}  ·  ${trace.decision.reason}${trace.error ? ` · ${trace.error}` : ''}`, trace.actionResult === 'error' ? 'error' : ''));
+  agentMode.update(trace.turn, trace.decision.reason);
 }
 
-async function begin(task: string): Promise<void> {
+// Playback pacing belongs to the demo, never to agent-core or the DOM engine.
+// It makes observe/act/observe visible without altering the actual decisions.
+const demonstratedPage: PagePort = {
+  observe: () => page.observe(),
+  execute: (action, observation) => page.execute(action, observation),
+  async settle() {
+    await page.settle();
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 300));
+    }
+  }
+};
+
+async function begin(task: string, trigger: HTMLElement = $('run')): Promise<void> {
   if (current) return;
-  current = new AbortController();
+  const controller = new AbortController();
+  current = controller;
   $('run').setAttribute('disabled', '');
   $('inspect').setAttribute('disabled', '');
   $('stop').removeAttribute('disabled');
+  document.querySelectorAll<HTMLButtonElement>('[data-task]').forEach((button) => { button.disabled = true; });
   $('timeline').replaceChildren();
-  $('status').textContent = `Running · ${task}`;
+  $('status').textContent = `启动中 · ${task}`;
+  let finalStatus: 'completed' | 'failed' | 'stopped' | 'max_turns' | 'error' = 'error';
   try {
-    const result = await runAgent(task, page, planner, { maxTurns: 12, signal: current.signal, onTrace: renderTrace, onObserve: renderSnapshot });
+    await agentMode.enter(trigger);
+    if (controller.signal.aborted) {
+      finalStatus = 'stopped';
+      $('status').textContent = 'STOPPED · 用户在启动时取消';
+      return;
+    }
+    $('status').textContent = `RUNNING · ${task}`;
+    const result = await runAgent(task, demonstratedPage, planner, {
+      maxTurns: 12,
+      signal: controller.signal,
+      onTrace: renderTrace,
+      onObserve: (snapshot, turn) => {
+        renderSnapshot(snapshot);
+        agentMode.update(turn, '观察页面快照');
+      }
+    });
+    finalStatus = result.status;
     $('status').textContent = `${result.status.toUpperCase()} · ${result.reason} · ${result.history.length} turns`;
   } catch (error) {
     $('status').textContent = `ERROR · ${error instanceof Error ? error.message : String(error)}`;
   } finally {
+    agentMode.leave(finalStatus);
     current = null;
     $('run').removeAttribute('disabled');
     $('inspect').removeAttribute('disabled');
     $('stop').setAttribute('disabled', '');
+    document.querySelectorAll<HTMLButtonElement>('[data-task]').forEach((button) => { button.disabled = false; });
     await refreshSnapshot();
   }
 }
 
-$('run').addEventListener('click', () => void begin(($('task') as HTMLInputElement).value));
+$('run').addEventListener('click', () => void begin(($('task') as HTMLInputElement).value, $('run')));
 $('stop').addEventListener('click', () => current?.abort());
 for (const item of document.querySelectorAll<HTMLButtonElement>('[data-task]')) {
-  item.addEventListener('click', () => { const task = item.dataset.task || ''; ($('task') as HTMLInputElement).value = task; void begin(task); });
+  item.addEventListener('click', () => {
+    const task = item.dataset.task || '';
+    ($('task') as HTMLInputElement).value = task;
+    void begin(task, item);
+  });
 }
 $('inspect').addEventListener('click', () => void refreshSnapshot());
 $('search-btn').addEventListener('click', () => {
