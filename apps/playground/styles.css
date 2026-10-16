@@ -7,3 +7,50 @@
 .region-widget [role="listbox"][hidden]{display:none}
 .region-widget [role="option"]{border:1px solid #d4e2e7;color:#24564d;background:#f6fbfa;border-radius:8px;padding:8px;font-size:11px}
 .region-widget #region-feedback{font-size:11px;color:#698195}
+
+/* Lucian UX/UI Prompt #045 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#045
+   The button-origin circle reveal, .8s duration and eased expansion are ported to the
+   Agent Mode entry state. The viewport status border is custom to this playground. */
+:root {
+  --ux-ease: cubic-bezier(.2,.8,.2,1);
+  --ux-accent: #b7a4ff;
+  --ux-accent-2: #7db4ff;
+  --ux-mint: #a5f2d3;
+  --ux-grad: linear-gradient(120deg,#b7a4ff,#7db4ff 55%,#a5f2d3);
+}
+.header-activity {display:flex;align-items:center;gap:10px;color:#8fa5b4;font:700 10px/1.4 ui-monospace,Consolas,monospace;letter-spacing:1.1px;white-space:nowrap}
+.header-activity-dot{width:7px;height:7px;border-radius:50%;background:#617389;box-shadow:0 0 0 4px #61738912;transition:background .25s,box-shadow .25s}
+.agent-active .header-activity {color:#c9fce6}
+.agent-active .header-activity-dot {background:#a5f2d3;box-shadow:0 0 0 5px #63ffc327,0 0 17px #63ffc3;animation:agent-breathe 1.7s ease-in-out infinite}
+.browser-agent-indicator{margin-left:auto;display:none;font:700 10px ui-monospace,monospace;color:#83f5cd;letter-spacing:.1em}
+.agent-active .browser-agent-indicator{display:inline-flex;align-items:center;gap:6px}
+.agent-active .page-panel {border-color:#7be3bb55;box-shadow:0 12px 60px #173c3d70,0 0 0 1px #89e4db29}
+.agent-active .agent-panel{border-color:#938fff45}
+.agent-active #run {background:linear-gradient(125deg,#d4a9ff,#a5f2d3);}
+
+/* Color perimeter is UI-only: never intercepts clicks or focus. */
+@property --agent-ring-angle {syntax:'<angle>';initial-value:0deg;inherits:false}
+.agent-frame{position:fixed;inset:9px;z-index:110;pointer-events:none;border-radius:22px;opacity:0;transition:opacity .3s var(--ux-ease);filter:drop-shadow(0 0 10px #7e8cff77)}
+.agent-frame::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:3px;background:conic-gradient(from var(--agent-ring-angle),#7ef5ce,#6bbbff,#c39aff,#ff7fcb,#ffd18b,#7ef5ce);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;animation:agent-perimeter 4s linear infinite}
+.agent-active .agent-frame{opacity:1}
+@keyframes agent-perimeter{to{--agent-ring-angle:360deg}}
+@keyframes agent-breathe{50%{opacity:.45;box-shadow:0 0 0 8px #63ffc30a,0 0 27px #63ffc3}}
+
+/* #045's circle expanding from a control, remapped to a viewport-sized portal. */
+.agent-portal{--portal-x:50vw;--portal-y:50vh;position:fixed;inset:0;z-index:120;pointer-events:none;visibility:hidden;opacity:0;display:grid;place-items:center;clip-path:circle(0 at var(--portal-x) var(--portal-y));background:radial-gradient(circle at 65% 22%,#53448d8c,transparent 34%),radial-gradient(circle at 20% 85%,#11665f,transparent 50%),#0d1324;color:#eef9ff}
+.agent-entering .agent-portal{visibility:visible;animation:agent-circle-reveal .8s var(--ux-ease) both}
+@keyframes agent-circle-reveal{0%{clip-path:circle(0 at var(--portal-x) var(--portal-y));opacity:1}65%{opacity:1}100%{clip-path:circle(150vmax at var(--portal-x) var(--portal-y));opacity:0}}
+.agent-portal-center{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;transform:translateY(-12px)}
+.agent-portal-orbit{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;border:2px solid #c4b0ff80;box-shadow:0 0 0 15px #c4b0ff11,0 0 0 32px #92d9ff0c,inset 0 0 34px #839cff45;margin-bottom:25px;animation:portal-orbit-rotate 2s linear infinite}
+.agent-portal-orbit span{font-size:44px;color:#c9ffe5;line-height:1}
+.agent-portal-kicker{font-size:11px;color:#adf3d6;font-weight:800;letter-spacing:.24em}
+.agent-portal-title{font-size:clamp(38px,7vw,78px);font-weight:850;line-height:1.1;letter-spacing:-.055em}
+.agent-portal-subtitle{font-size:11px;color:#bac6e2;letter-spacing:.18em;margin-top:8px}
+@keyframes portal-orbit-rotate{to{transform:rotate(360deg)}}
+.agent-hud{position:fixed;left:50%;bottom:21px;transform:translateX(-50%) translateY(0);z-index:111;max-width:calc(100vw - 55px);background:#101a2cf5;border:1px solid #688dba87;border-radius:100px;padding:12px 17px;display:flex;align-items:center;gap:10px;color:#e5fbf4;box-shadow:0 12px 40px #0009,0 0 30px #537ace35;font-size:12px;white-space:nowrap;pointer-events:none;backdrop-filter:blur(12px)}
+.agent-hud[hidden]{display:none}
+.agent-hud-pulse{width:9px;height:9px;flex:none;border-radius:50%;background:#a5f2d3;box-shadow:0 0 0 5px #9cffe21c,0 0 13px #83ffd6;animation:agent-breathe 1.7s ease-in-out infinite}
+.agent-hud-mark{border-left:1px solid #456476;padding-left:10px;margin-left:3px;color:#b8b3ff;font:800 9px ui-monospace,monospace;letter-spacing:1px}
+@media(max-width:850px){.header-activity .tag{display:none}}
+@media(max-width:460px){.agent-frame{inset:5px;border-radius:14px}.agent-hud-mark{display:none}.agent-hud{bottom:13px;padding:10px 13px;font-size:11px}.header-activity{font-size:9px;letter-spacing:0}}
+@media(prefers-reduced-motion:reduce){.agent-frame::before,.header-activity-dot,.agent-hud-pulse,.agent-portal-orbit{animation:none!important}.agent-frame{transition:none}.agent-entering .agent-portal{animation:none;visibility:hidden}.agent-active .agent-frame{opacity:1}}
