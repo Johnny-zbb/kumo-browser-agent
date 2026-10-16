@@ -51,19 +51,21 @@ const demonstratedPage: PagePort = {
   }
 };
 
-async function begin(task: string, trigger: HTMLElement = $('run')): Promise<void> {
+async function begin(task: string): Promise<void> {
   if (current) return;
   const controller = new AbortController();
   current = controller;
-  $('run').setAttribute('disabled', '');
+  const input = $('task') as HTMLInputElement;
+  const runButton = $('run') as HTMLButtonElement;
+  input.disabled = true;
+  runButton.textContent = '■ 停止任务';
+  runButton.setAttribute('aria-label', '停止 Agent 任务');
   $('inspect').setAttribute('disabled', '');
-  $('stop').removeAttribute('disabled');
-  document.querySelectorAll<HTMLButtonElement>('[data-task]').forEach((button) => { button.disabled = true; });
   $('timeline').replaceChildren();
   $('status').textContent = `启动中 · ${task}`;
   let finalStatus: 'completed' | 'failed' | 'stopped' | 'max_turns' | 'error' = 'error';
   try {
-    await agentMode.enter(trigger);
+    await agentMode.enter();
     if (controller.signal.aborted) {
       finalStatus = 'stopped';
       $('status').textContent = 'STOPPED · 用户在启动时取消';
@@ -86,23 +88,31 @@ async function begin(task: string, trigger: HTMLElement = $('run')): Promise<voi
   } finally {
     agentMode.leave(finalStatus);
     current = null;
-    $('run').removeAttribute('disabled');
+    input.disabled = false;
+    runButton.textContent = '✦ 启动 Agent';
+    runButton.setAttribute('aria-label', '启动 Agent 任务');
     $('inspect').removeAttribute('disabled');
-    $('stop').setAttribute('disabled', '');
-    document.querySelectorAll<HTMLButtonElement>('[data-task]').forEach((button) => { button.disabled = false; });
     await refreshSnapshot();
   }
 }
 
-$('run').addEventListener('click', () => void begin(($('task') as HTMLInputElement).value, $('run')));
-$('stop').addEventListener('click', () => current?.abort());
-for (const item of document.querySelectorAll<HTMLButtonElement>('[data-task]')) {
-  item.addEventListener('click', () => {
-    const task = item.dataset.task || '';
-    ($('task') as HTMLInputElement).value = task;
-    void begin(task, item);
-  });
-}
+$('task-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  if (current) {
+    current.abort();
+    // Exit immediately even if the initial circular reveal is still underway.
+    agentMode.leave('stopped');
+    $('status').textContent = 'STOPPING · 正在取消任务';
+    return;
+  }
+  const task = ($('task') as HTMLInputElement).value.trim();
+  if (!task) {
+    $('status').textContent = '请输入任务描述';
+    ($('task') as HTMLInputElement).focus();
+    return;
+  }
+  void begin(task);
+});
 $('inspect').addEventListener('click', () => void refreshSnapshot());
 $('search-btn').addEventListener('click', () => {
   const keyword = ($('search') as HTMLInputElement).value;

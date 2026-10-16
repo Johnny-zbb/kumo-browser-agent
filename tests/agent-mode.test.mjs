@@ -5,44 +5,41 @@ import { AgentModeView } from '../dist/apps/playground/src/agent-mode.js';
 function withMockDom(reducedMotion, run) {
   const classes = new Set();
   const properties = new Map();
-  const elements = Object.fromEntries(['agent-portal', 'agent-hud', 'agent-hud-label', 'agent-header-status'].map(id => [id, {
-    id, hidden: id === 'agent-hud', textContent: '',
-    style: { setProperty: (k, v) => properties.set(k, v) }
+  const elements = Object.fromEntries(['browser-stage', 'agent-portal', 'agent-hud', 'agent-hud-label', 'agent-header-status'].map(id => [id, {
+    id, hidden: id === 'agent-hud', textContent: '', clientWidth: 980, clientHeight: 480,
+    style: { setProperty: (k, v) => properties.set(k, v) },
+    classList: {
+      add: (...names) => names.forEach(name => classes.add(name)),
+      remove: (...names) => names.forEach(name => classes.delete(name)),
+      contains: name => classes.has(name)
+    }
   }]));
   const savedDocument = globalThis.document;
   const savedWindow = globalThis.window;
-  globalThis.document = {
-    documentElement: { classList: {
-      add: (...names) => names.forEach(n => classes.add(n)),
-      remove: (...names) => names.forEach(n => classes.delete(n)),
-      contains: name => classes.has(name)
-    } },
-    getElementById: id => elements[id]
-  };
+  let finishEnter = null;
+  globalThis.document = { getElementById: id => elements[id] };
   globalThis.window = {
-    innerWidth: 800,
-    innerHeight: 600,
     matchMedia: () => ({ matches: reducedMotion }),
-    setTimeout: callback => { callback(); return 1; }
+    setTimeout: callback => { finishEnter = callback; return 1; }
   };
-  return Promise.resolve().then(() => run({ classes, properties, elements })).finally(() => {
+  return Promise.resolve().then(() => run({ classes, properties, elements, finish: () => finishEnter?.() })).finally(() => {
     globalThis.document = savedDocument;
     globalThis.window = savedWindow;
   });
 }
 
-test('agent mode enters from the pressed button and reveals task activity', async () => {
-  await withMockDom(false, async ({ classes, properties, elements }) => {
+test('agent mode starts at sandbox center, and activates only its container', async () => {
+  await withMockDom(false, async ({ classes, properties, elements, finish }) => {
     const mode = new AgentModeView();
-    const promise = mode.enter({ getBoundingClientRect: () => ({ left: 120, top: 210, width: 80, height: 40 }) });
-    assert.equal(properties.get('--portal-x'), '160px');
-    assert.equal(properties.get('--portal-y'), '230px');
-    assert.equal(classes.has('agent-active'), true);
-    assert.equal(classes.has('agent-entering'), true);
+    const promise = mode.enter();
+    assert.equal(properties.get('--portal-x'), '490px');
+    assert.equal(properties.get('--portal-y'), '240px');
+    assert.ok(classes.has('agent-entering'));
+    assert.ok(classes.has('agent-active'));
     assert.equal(elements['agent-hud'].hidden, false);
+    finish();
     await promise;
     assert.equal(classes.has('agent-entering'), false);
-    assert.equal(classes.has('agent-active'), true);
     mode.update(2, '点击搜索');
     assert.equal(elements['agent-hud-label'].textContent, '第 2 轮 · 点击搜索');
     mode.leave('completed');
@@ -52,14 +49,25 @@ test('agent mode enters from the pressed button and reveals task activity', asyn
   });
 });
 
-test('reduced-motion mode and cancellation cleanly exit without animation', async () => {
-  await withMockDom(true, async ({ classes, elements }) => {
+test('stop during entry does not resurrect the agent mode', async () => {
+  await withMockDom(false, async ({ classes, elements, finish }) => {
     const mode = new AgentModeView();
-    await mode.enter({ getBoundingClientRect: () => ({ left: -10, top: 1000, width: 20, height: 20 }) });
+    const promise = mode.enter();
+    mode.leave('stopped');
+    finish();
+    await promise;
+    assert.ok(!classes.has('agent-entering'));
+    assert.ok(!classes.has('agent-active'));
+    assert.equal(elements['agent-header-status'].textContent, 'TASK STOPPED');
+  });
+});
+
+test('reduced-motion mode enters without waiting and exits normally', async () => {
+  await withMockDom(true, async ({ classes }) => {
+    const mode = new AgentModeView();
+    await mode.enter();
     assert.equal(classes.has('agent-active'), true);
     mode.leave('stopped');
-    assert.equal(classes.has('agent-entering'), false);
     assert.equal(classes.has('agent-active'), false);
-    assert.equal(elements['agent-header-status'].textContent, 'TASK STOPPED');
   });
 });
