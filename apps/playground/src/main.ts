@@ -4,11 +4,13 @@ import { DemoPlanner } from './demo-planner.js';
 import { runAgent } from '../../../packages/agent-core/src/run-agent.js';
 import type { AgentTrace, PagePort, PageSnapshot } from '../../../packages/agent-core/src/types.js';
 import { AgentModeView } from './agent-mode.js';
+import { DevInspector } from './dev-inspector.js';
 
 const root = document.getElementById('sandbox') as HTMLElement;
 const page = new BrowserDomPage(root, [ariaSelectAdapter]);
 const planner = new DemoPlanner();
 const agentMode = new AgentModeView();
+const inspector = new DevInspector();
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const text = (value: unknown) => document.createTextNode(String(value));
 let current: AbortController | null = null;
@@ -65,7 +67,8 @@ async function begin(task: string): Promise<void> {
   $('status').textContent = `启动中 · ${task}`;
   let finalStatus: 'completed' | 'failed' | 'stopped' | 'max_turns' | 'error' = 'error';
   try {
-    await agentMode.enter();
+    inspector.setOpen(false);
+    await agentMode.enter(runButton);
     if (controller.signal.aborted) {
       finalStatus = 'stopped';
       $('status').textContent = 'STOPPED · 用户在启动时取消';

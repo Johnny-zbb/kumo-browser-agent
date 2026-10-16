@@ -71,3 +71,15 @@ test('reduced-motion mode enters without waiting and exits normally', async () =
     assert.equal(classes.has('agent-active'), false);
   });
 });
+
+test('circular reveal can originate from the sandbox task button', async () => {
+  await withMockDom(true, async ({ properties, elements }) => {
+    elements['browser-stage'].getBoundingClientRect = () => ({ left: 60, top: 120 });
+    const trigger = { getBoundingClientRect: () => ({ left: 340, top: 580, width: 140, height: 50 }) };
+    const mode = new AgentModeView();
+    await mode.enter(trigger);
+    assert.equal(properties.get('--portal-x'), '350px');
+    assert.equal(properties.get('--portal-y'), '480px');
+    mode.leave('completed');
+  });
+});

@@ -10,11 +10,15 @@ export class AgentModeView {
   private readonly reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   private generation = 0;
 
-  async enter(): Promise<void> {
+  async enter(trigger?: HTMLElement): Promise<void> {
     const generation = ++this.generation;
-    // The button is above the sandbox; the reveal starts within the controlled viewport.
-    this.portal.style.setProperty('--portal-x', `${this.stage.clientWidth / 2}px`);
-    this.portal.style.setProperty('--portal-y', `${this.stage.clientHeight / 2}px`);
+    // Start at the task trigger inside the sandbox. Fall back to stage center for programmatic use.
+    const stageBox = trigger ? this.stage.getBoundingClientRect() : null;
+    const triggerBox = trigger?.getBoundingClientRect();
+    const x = triggerBox && stageBox ? triggerBox.left + triggerBox.width / 2 - stageBox.left : this.stage.clientWidth / 2;
+    const y = triggerBox && stageBox ? triggerBox.top + triggerBox.height / 2 - stageBox.top : this.stage.clientHeight / 2;
+    this.portal.style.setProperty('--portal-x', `${Math.min(this.stage.clientWidth, Math.max(0, x))}px`);
+    this.portal.style.setProperty('--portal-y', `${Math.min(this.stage.clientHeight, Math.max(0, y))}px`);
     this.hud.hidden = false;
     this.hudLabel.textContent = '正在唤醒 Agent…';
     this.headerLabel.textContent = 'ENTERING AGENT MODE';
