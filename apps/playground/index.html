@@ -3,55 +3,42 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kumo Browser Agent · Playground</title>
+  <meta name="theme-color" content="#080e19" />
+  <title>Kumo Browser Agent · Browser Sandbox</title>
   <link rel="stylesheet" href="/apps/playground/styles.css" />
 </head>
 <body>
-  <main class="shell">
-    <header>
-      <div class="brand"><span class="logo">K</span><div><strong>Kumo / Browser Agent</strong><small>DOM Mode · Observe → Decide → Act → Verify</small></div></div>
-      <div class="header-activity"><span class="header-activity-dot" aria-hidden="true"></span><span id="agent-header-status">STANDBY</span><span class="tag">REAL DOM · RULE PLANNER</span></div>
-    </header>
-    <section class="hero">
-      <p class="eyebrow">BROWSER AGENT LAB / PLAYGROUND</p>
-      <h1>让 Agent <em>看懂页面，</em>然后动手操作。</h1>
-      <p>输入任务，观察 Agent 如何理解页面、执行操作、验证结果。当前使用规则规划器，所有操作仅限下方的模拟控制台。</p>
-    </section>
-
-    <section class="command-bar" aria-label="Agent 任务控制">
-      <div class="command-title"><span class="command-icon" aria-hidden="true">✦</span><div><strong>What should Kumo do?</strong><small>描述要在 Browser Sandbox 中执行的操作</small></div></div>
-      <form class="prompt" id="task-form">
-        <label for="task" class="sr-only">自然语言任务</label>
-        <input id="task" value="将区域切换为华东-上海一" aria-label="自然语言任务" autocomplete="off" />
-        <button id="run" class="accent" type="submit">✦ 启动 Agent</button>
-      </form>
-      <div id="status" class="status" role="status" aria-live="polite">READY · 输入任务后启动</div>
-      <div class="command-hint">可以尝试：搜索 agent 实例、创建一个实例、切换区域、滚动页面到底部</div>
-    </section>
-
-    <section class="panel page-panel" aria-label="Browser Sandbox">
-      <div class="panel-head"><div><b>Browser Sandbox</b><p>Agent 的受控浏览器区域 · 仅操作沙盒内的模拟资源</p></div><span class="pill">SAME-ORIGIN · SANDBOXED</span></div>
-      <div class="browser-top"><span class="dots">● ● ●</span><span class="browser-url">kumo.local / cloud / ecs</span><span class="browser-agent-indicator" aria-hidden="true">✦ Agent 操作中</span></div>
-      <div class="browser-stage" id="browser-stage">
-        <div class="sandbox" id="sandbox">
-          <div class="cloud-hero"><span class="mini-kicker">CLOUD CONSOLE / ECS</span><h2>弹性云服务器</h2><p>实例管理 · 演示资源均为本地模拟数据</p></div>
-          <div class="toolbar"><label class="sr-only" for="search">搜索实例</label><input id="search" aria-label="搜索实例" placeholder="搜索实例" value="" /><button id="search-btn" aria-label="执行搜索">搜索</button><button id="create-btn" class="accent">+ 新建实例</button></div>
-          <section class="region-widget" aria-label="自定义区域选择控件">
-            <span id="region-label">区域</span>
-            <button type="button" id="region-select" role="combobox" aria-label="区域" aria-controls="region-options" aria-expanded="false" aria-valuetext="华北-北京四">华北-北京四 ▾</button>
-            <div id="region-options" role="listbox" hidden>
-              <button type="button" role="option" data-value="华北-北京四" aria-selected="true">华北-北京四</button>
-              <button type="button" role="option" data-value="华东-上海一" aria-selected="false">华东-上海一</button>
-              <button type="button" role="option" data-value="华南-广州" aria-selected="false">华南-广州</button>
-            </div>
-            <span id="region-feedback">当前区域：华北-北京四</span>
-          </section>
-          <p id="search-result" class="feedback">显示全部实例</p>
-          <div class="resource-list" id="instance-list"><div class="resource-row">ECS · demo-agent-prod · running · ID-1</div><div class="resource-row">ECS · app-staging · stopped · ID-2</div><div class="resource-row">ECS · agent-lab · running · ID-3</div></div>
-          <section id="create-dialog" class="dialog" hidden><h3>创建实例</h3><label for="instance-name">实例名称</label><input id="instance-name" aria-label="实例名称" placeholder="例如 kumo-demo" value="" /><div class="dialog-actions"><button id="cancel-create">取消</button><button id="confirm-create" class="accent">确认创建</button></div></section>
-          <p id="create-feedback" class="feedback"></p>
-          <div class="long-list" aria-hidden="true"><h3>更多运行记录</h3><p>以下区块用于测试滚动操作。</p><div class="filler"></div><p>到达页面底部</p></div>
+  <main class="workspace">
+    <section class="browser-window" aria-label="Kumo Browser Sandbox">
+      <div class="browser-top">
+        <div class="brand" aria-label="Kumo Browser Agent"><span class="brand-mark" aria-hidden="true">✳</span><span>KUMO <span class="brand-soft">/ Browser Agent</span></span></div>
+        <div class="address-bar"><span class="secure-dot" aria-hidden="true"></span><span>kumo.local / cloud / ecs</span><span class="address-label">SANDBOX</span></div>
+        <div class="chrome-actions">
+          <span id="agent-header-status" class="chrome-status" role="status" aria-live="polite">STANDBY</span>
+          <button type="button" id="inspector-toggle" class="icon-button" aria-controls="dev-inspector" aria-expanded="false" aria-label="打开开发者检查器" title="查看 Trace 与 Snapshot">☷ <span>详情</span></button>
         </div>
+      </div>
+      <div class="browser-stage" id="browser-stage">
+        <!-- Only this #sandbox node is observable and actionable by BrowserDomPage. -->
+      <div class="sandbox" id="sandbox">
+        <div class="cloud-hero"><span class="mini-kicker">CLOUD CONSOLE / ECS</span><h2>弹性云服务器</h2><p>实例管理 · 演示资源均为本地模拟数据</p></div>
+        <div class="toolbar"><label class="sr-only" for="search">搜索实例</label><input id="search" aria-label="搜索实例" placeholder="搜索实例" value="" /><button id="search-btn" aria-label="执行搜索">搜索</button><button id="create-btn" class="accent">+ 新建实例</button></div>
+        <section class="region-widget" aria-label="自定义区域选择控件">
+          <span id="region-label">区域</span>
+          <button type="button" id="region-select" role="combobox" aria-label="区域" aria-controls="region-options" aria-expanded="false" aria-valuetext="华北-北京四">华北-北京四 ▾</button>
+          <div id="region-options" role="listbox" hidden>
+            <button type="button" role="option" data-value="华北-北京四" aria-selected="true">华北-北京四</button>
+            <button type="button" role="option" data-value="华东-上海一" aria-selected="false">华东-上海一</button>
+            <button type="button" role="option" data-value="华南-广州" aria-selected="false">华南-广州</button>
+          </div>
+          <span id="region-feedback">当前区域：华北-北京四</span>
+        </section>
+        <p id="search-result" class="feedback">显示全部实例</p>
+        <div class="resource-list" id="instance-list"><div class="resource-row">ECS · demo-agent-prod · running · ID-1</div><div class="resource-row">ECS · app-staging · stopped · ID-2</div><div class="resource-row">ECS · agent-lab · running · ID-3</div></div>
+        <section id="create-dialog" class="dialog" hidden><h3>创建实例</h3><label for="instance-name">实例名称</label><input id="instance-name" aria-label="实例名称" placeholder="例如 kumo-demo" value="" /><div class="dialog-actions"><button id="cancel-create">取消</button><button id="confirm-create" class="accent">确认创建</button></div></section>
+        <p id="create-feedback" class="feedback"></p>
+        <div class="long-list" aria-hidden="true"><h3>更多运行记录</h3><p>以下区块用于测试滚动操作。</p><div class="filler"></div><p>到达页面底部</p></div>
+      </div>
         <div id="agent-frame" class="agent-frame" aria-hidden="true"></div>
         <div id="agent-portal" class="agent-portal" aria-hidden="true">
           <div class="agent-portal-center">
@@ -61,18 +48,30 @@
             <div class="agent-portal-subtitle">OBSERVE · DECIDE · ACT · VERIFY</div>
           </div>
         </div>
-        <div id="agent-hud" class="agent-hud" role="status" aria-live="polite" hidden><span class="agent-hud-pulse" aria-hidden="true"></span><span id="agent-hud-label">正在准备…</span><span class="agent-hud-mark">AGENT MODE</span></div>
+        <!-- Fixed to this browser stage; intentionally outside the controlled DOM. -->
+        <div class="command-dock" aria-label="Agent 控制栏">
+          <div id="agent-hud" class="agent-hud" role="status" aria-live="polite" hidden><span class="agent-hud-pulse" aria-hidden="true"></span><span id="agent-hud-label">正在准备…</span><span class="agent-hud-mark">AGENT MODE</span></div>
+          <form class="prompt" id="task-form">
+            <label for="task" class="sr-only">要让 Agent 执行什么任务？</label>
+            <span class="prompt-icon" aria-hidden="true">✦</span>
+            <input id="task" value="将区域切换为华东-上海一" placeholder="告诉 Kumo 要在这个页面执行什么…" aria-label="自然语言任务" autocomplete="off" />
+            <button id="run" type="submit" aria-label="启动 Agent 任务">✦ 启动 Agent</button>
+          </form>
+          <div id="status" class="sr-only" role="status" aria-live="polite">READY · 输入任务后启动</div>
+          <p class="dock-caption">DOM AGENT · 本地沙盒演示 · 非真实云端操作</p>
+        </div>
+        <div id="inspector-backdrop" class="inspector-backdrop" hidden></div>
+        <aside id="dev-inspector" class="dev-inspector" role="dialog" aria-modal="true" aria-labelledby="inspector-title" hidden>
+          <div class="inspector-head"><div><span class="inspector-eyebrow">DEVELOPER TOOLS</span><h2 id="inspector-title">Agent 内部视图</h2></div><button type="button" id="inspector-close" class="icon-button" aria-label="关闭开发者检查器">✕</button></div>
+          <div class="inspector-tabs" role="tablist" aria-label="检查器视图">
+            <button type="button" id="tab-trace" role="tab" aria-controls="panel-trace" aria-selected="true" tabindex="0" data-inspector-tab="trace">Trace <span>执行轨迹</span></button>
+            <button type="button" id="tab-snapshot" role="tab" aria-controls="panel-snapshot" aria-selected="false" tabindex="-1" data-inspector-tab="snapshot">Snapshot <span>页面语义</span></button>
+          </div>
+          <section id="panel-trace" class="inspector-panel" role="tabpanel" aria-labelledby="tab-trace"><p class="inspector-help">每次 Observe → Decide → Act 的结果</p><div class="timeline" id="timeline"><div class="empty">执行任务后显示逐轮决策与动作。</div></div></section>
+          <section id="panel-snapshot" class="inspector-panel" role="tabpanel" aria-labelledby="tab-snapshot" hidden><div class="inspector-tools"><span>最新 DOM Snapshot</span><button id="inspect" type="button" class="small" aria-label="重新观察页面">↻ 重新观察</button></div><pre id="snapshot">Capturing...</pre></section>
+        </aside>
       </div>
     </section>
-
-    <details class="panel debug-panel">
-      <summary><span>技术细节 <b>TRACE & SEMANTIC SNAPSHOT</b></span><span class="debug-arrow" aria-hidden="true">⌄</span></summary>
-      <div class="debug-grid">
-        <section class="debug-section"><div class="debug-heading">执行轨迹 · Trace</div><div class="timeline" id="timeline"><div class="empty">执行任务后显示逐轮决策与动作。</div></div></section>
-        <section class="debug-section"><div class="debug-heading">语义快照 · Snapshot <button id="inspect" class="small" type="button">重新观察 ↻</button></div><pre id="snapshot">Capturing...</pre></section>
-      </div>
-    </details>
-    <footer><span>Kumo Browser Agent · DOM Mode · Architecture first, model later.</span><span>Domain / Application / Infrastructure / Demo</span></footer>
   </main>
   <script type="module" src="/dist/apps/playground/src/main.js"></script>
 </body>
