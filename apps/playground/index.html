@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kumo Browser Agent · Playground</title>
+  <link rel="stylesheet" href="/apps/playground/styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header><div class="brand"><span class="logo">K</span><div><strong>Kumo / Browser Agent</strong><small>DOM Mode · Observe → Decide → Act → Verify</small></div></div><span class="tag">REAL DOM · RULE PLANNER</span></header>
+    <section class="hero"><p class="eyebrow">BROWSER AGENT LAB</p><h1>让 Agent <em>看懂页面，</em><br>然后动手操作。</h1><p>基于实时 DOM 提取 Snapshot，以稳定 Ref 操控页面，执行后重新观察并验证结果。第一版使用规则规划器，没有假装调用 LLM。</p></section>
+    <div class="workbench">
+      <section class="panel page-panel"><div class="panel-head"><div><b>01 · Browser Sandbox</b><p>被控页面 · 所有动作都真实发生在这里</p></div><span class="pill">Same-origin only</span></div>
+        <div class="browser-top"><span class="dots">● ● ●</span><span class="browser-url">kumo.local / cloud / ecs</span></div>
+        <div class="sandbox" id="sandbox">
+          <div class="cloud-hero"><span class="mini-kicker">CLOUD CONSOLE / ECS</span><h2>弹性云服务器</h2><p>实例管理 · 演示资源均为本地模拟数据</p></div>
+          <div class="toolbar"><label class="sr-only" for="search">搜索实例</label><input id="search" aria-label="搜索实例" placeholder="搜索实例" value="" /><button id="search-btn" aria-label="执行搜索">搜索</button><button id="create-btn" class="accent">+ 新建实例</button></div>
+          <p id="search-result" class="feedback">显示全部实例</p>
+          <div class="resource-list" id="instance-list"><div class="resource-row">ECS · demo-agent-prod · running · ID-1</div><div class="resource-row">ECS · app-staging · stopped · ID-2</div><div class="resource-row">ECS · agent-lab · running · ID-3</div></div>
+          <section id="create-dialog" class="dialog" hidden><h3>创建实例</h3><label for="instance-name">实例名称</label><input id="instance-name" aria-label="实例名称" placeholder="例如 kumo-demo" value="" /><div class="dialog-actions"><button id="cancel-create">取消</button><button id="confirm-create" class="accent">确认创建</button></div></section>
+          <p id="create-feedback" class="feedback"></p>
+          <div class="long-list" aria-hidden="true"><h3>更多运行记录</h3><p>以下区块用于测试滚动操作。</p><div class="filler"></div><p>到达页面底部</p></div>
+        </div>
+      </section>
+      <section class="panel agent-panel"><div class="panel-head"><div><b>02 · Agent Runner</b><p>一句话任务 → 动作 → 验证 → 结束</p></div><span class="pill strong">0.1.0</span></div>
+        <div class="tasks"><button data-task="搜索 agent 实例">搜索 agent 实例</button><button data-task="创建一个实例">创建一个实例</button><button data-task="滚动页面到底部">滚动页面到底部</button></div>
+        <label for="task" class="field-label">Task</label><div class="prompt"><input id="task" value="搜索 agent 实例" aria-label="自然语言任务" /><button id="run" class="accent">执行 ↗</button></div>
+        <div class="status" id="status">READY · 请选择一个任务</div><button id="stop" class="small" disabled>停止任务</button>
+        <div class="subhead">TRACE / EXECUTION HISTORY</div><div class="timeline" id="timeline"><div class="empty">执行后可以看到每轮决策和动作。</div></div>
+      </section>
+    </div>
+    <section class="panel snapshot-panel"><div class="panel-head"><div><b>03 · Semantic Snapshot</b><p>Agent 看到的是可操作元素和页面文本，而不是整份 HTML</p></div><button id="inspect" class="small">重新观察 ↻</button></div><pre id="snapshot">Capturing...</pre></section>
+    <footer><span>Kumo Browser Agent · DOM Mode · Architecture first, model later.</span><span>Domain / Application / Infrastructure / Demo</span></footer>
+  </main>
+  <script type="module" src="/dist/apps/playground/src/main.js"></script>
+</body>
+</html>
