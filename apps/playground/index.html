@@ -16,6 +16,16 @@
         <div class="sandbox" id="sandbox">
           <div class="cloud-hero"><span class="mini-kicker">CLOUD CONSOLE / ECS</span><h2>弹性云服务器</h2><p>实例管理 · 演示资源均为本地模拟数据</p></div>
           <div class="toolbar"><label class="sr-only" for="search">搜索实例</label><input id="search" aria-label="搜索实例" placeholder="搜索实例" value="" /><button id="search-btn" aria-label="执行搜索">搜索</button><button id="create-btn" class="accent">+ 新建实例</button></div>
+          <section class="region-widget" aria-label="自定义区域选择控件">
+            <span id="region-label">区域</span>
+            <button type="button" id="region-select" role="combobox" aria-label="区域" aria-controls="region-options" aria-expanded="false" aria-valuetext="华北-北京四">华北-北京四 ▾</button>
+            <div id="region-options" role="listbox" hidden>
+              <button type="button" role="option" data-value="华北-北京四" aria-selected="true">华北-北京四</button>
+              <button type="button" role="option" data-value="华东-上海一" aria-selected="false">华东-上海一</button>
+              <button type="button" role="option" data-value="华南-广州" aria-selected="false">华南-广州</button>
+            </div>
+            <span id="region-feedback">当前区域：华北-北京四</span>
+          </section>
           <p id="search-result" class="feedback">显示全部实例</p>
           <div class="resource-list" id="instance-list"><div class="resource-row">ECS · demo-agent-prod · running · ID-1</div><div class="resource-row">ECS · app-staging · stopped · ID-2</div><div class="resource-row">ECS · agent-lab · running · ID-3</div></div>
           <section id="create-dialog" class="dialog" hidden><h3>创建实例</h3><label for="instance-name">实例名称</label><input id="instance-name" aria-label="实例名称" placeholder="例如 kumo-demo" value="" /><div class="dialog-actions"><button id="cancel-create">取消</button><button id="confirm-create" class="accent">确认创建</button></div></section>
@@ -23,8 +33,8 @@
           <div class="long-list" aria-hidden="true"><h3>更多运行记录</h3><p>以下区块用于测试滚动操作。</p><div class="filler"></div><p>到达页面底部</p></div>
         </div>
       </section>
-      <section class="panel agent-panel"><div class="panel-head"><div><b>02 · Agent Runner</b><p>一句话任务 → 动作 → 验证 → 结束</p></div><span class="pill strong">0.1.0</span></div>
-        <div class="tasks"><button data-task="搜索 agent 实例">搜索 agent 实例</button><button data-task="创建一个实例">创建一个实例</button><button data-task="滚动页面到底部">滚动页面到底部</button></div>
+      <section class="panel agent-panel"><div class="panel-head"><div><b>02 · Agent Runner</b><p>一句话任务 → 动作 → 验证 → 结束</p></div><span class="pill strong">0.2.0</span></div>
+        <div class="tasks"><button data-task="搜索 agent 实例">搜索 agent 实例</button><button data-task="创建一个实例">创建一个实例</button><button data-task="将区域切换为华东-上海一">切换区域</button><button data-task="滚动页面到底部">滚动页面到底部</button></div>
         <label for="task" class="field-label">Task</label><div class="prompt"><input id="task" value="搜索 agent 实例" aria-label="自然语言任务" /><button id="run" class="accent">执行 ↗</button></div>
         <div class="status" id="status">READY · 请选择一个任务</div><button id="stop" class="small" disabled>停止任务</button>
         <div class="subhead">TRACE / EXECUTION HISTORY</div><div class="timeline" id="timeline"><div class="empty">执行后可以看到每轮决策和动作。</div></div>

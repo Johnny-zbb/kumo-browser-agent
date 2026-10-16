@@ -1,4 +1,4 @@
-# Architecture (v0.1)
+# Architecture (v0.2)
 
 ## Context
 
@@ -27,7 +27,7 @@ Task ──────────────────>│ AgentRunner     
 
 A component adapter should **recognize a rendered component**, **extract concise semantics** and optionally **execute component-level actions**. The engine (not the adapter) must own stable refs and validation. Standard HTML/ARIA is handled generically before adding library-specific adapters.
 
-Avoid hard-coding `ti-*`, `tp-*`, Ant Design classes, Monaco or custom-component names inside the universal DOM traversal. Put those in `adapters/<component-family>` when a real fixture and test exist.
+Avoid hard-coding `ti-*`, `tp-*`, Ant Design classes, Monaco or custom-component names inside the universal DOM traversal. Put those in `adapters/<component-family>` when a real fixture and test exist. See [Component Adapter v0.2](component-adapters.md) for the verified ARIA example, action contract and current limitations.
 
 ## Design decisions
 
@@ -40,7 +40,7 @@ Avoid hard-coding `ti-*`, `tp-*`, Ant Design classes, Monaco or custom-component
 
 ## Next milestones
 
-1. Refactor `dom-engine` with an `AdapterRegistry`, test on Ant Design / Tiny samples, and isolate ref registration.
+1. Add regression fixtures for actual Ant Design/Tiny components; retain the registry/ref separation and add browser E2E in CI.
 2. Build a `TaskVerifier` with independent completion criteria and basic action authorization policy.
 3. Add one LLM planner with strict action schema and controlled prompt budgets.
 4. Add visual observations and coordinate targets with viewport/screenshot version checks.

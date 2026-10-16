@@ -22,10 +22,17 @@ export class DemoPlanner implements PlannerPort {
       if (search) return { kind: 'act', action: { kind: 'click', ref: search.ref }, reason: '执行搜索' };
       return { kind: 'fail', reason: '搜索控件缺失' };
     }
+    if (/区域|上海|北京|广州/.test(task)) {
+      const wanted = /广州/.test(task) ? '华南-广州' : /北京/.test(task) ? '华北-北京四' : '华东-上海一';
+      const combobox = snapshot.elements.find(x => x.role === 'combobox' && x.name === '区域');
+      if (!combobox || !combobox.actions?.includes('selectOption')) return { kind: 'fail', reason: '区域组件不支持选项选择' };
+      if (combobox.value === wanted && snapshot.text.includes(`当前区域：${wanted}`)) return { kind: 'done', reason: '已验证区域切换成功' };
+      return { kind: 'act', action: { kind: 'selectOption', ref: combobox.ref, value: wanted }, reason: '通过组件适配器选择区域' };
+    }
     if (/滚动/.test(task)) {
       if (snapshot.viewport.atBottom) return { kind: 'done', reason: '已验证滚动终点' };
       return { kind: 'act', action: { kind: 'scroll', direction: 'down' }, reason: '向下滚动页面' };
     }
-    return { kind: 'fail', reason: 'v0 规则规划器只支持：搜索实例 / 创建实例 / 滚动页面' };
+    return { kind: 'fail', reason: '演示规则规划器只支持：搜索 / 创建 / 区域选择 / 滚动' };
   }
 }

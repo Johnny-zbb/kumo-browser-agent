@@ -5,6 +5,8 @@ export interface PageElement {
   name: string;
   value?: string;
   disabled: boolean;
+  /** Actions explicitly supported by this target (useful for custom widgets). */
+  actions?: readonly PageAction['kind'][];
 }
 
 export interface PageSnapshot {
@@ -19,6 +21,7 @@ export interface PageSnapshot {
 export type PageAction =
   | { kind: 'click'; ref: number }
   | { kind: 'input'; ref: number; value: string }
+  | { kind: 'selectOption'; ref: number; value: string }
   | { kind: 'scroll'; direction: 'up' | 'down'; ref?: number };
 
 export type Decision =
