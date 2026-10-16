@@ -45,7 +45,16 @@ export class BrowserDomPage implements PagePort {
     const selectors = ['button', 'input', 'textarea', 'select', 'a[href]', '[role="button"]', '[role="textbox"]', '[contenteditable="true"]', ...this.registry.selectors()];
     const nodes = this.root.querySelectorAll<HTMLElement>(selectors.join(','));
     for (const el of nodes) {
-      if (!isVisible(el) || el.closest('[aria-hidden="true"], [inert]')) continue;
+      if (!isVisible(el) || el.closest('[hidden], [aria-hidden="true"], [inert]')) continue;
+      // A recognized component is an atomic semantic node. Hide implementation
+      // controls/inner buttons from the Agent; only the adapter exposes actions.
+      let parent = el.parentElement;
+      let insideWidget = false;
+      while (parent && parent !== this.root) {
+        if (this.registry.resolve(parent)) { insideWidget = true; break; }
+        parent = parent.parentElement;
+      }
+      if (insideWidget) continue;
       const adapter = this.registry.resolve(el);
       const semantics = adapter?.observe(el);
       const role = semantics?.role ?? roleOf(el);
@@ -58,6 +67,7 @@ export class BrowserDomPage implements PagePort {
         ref, role, name: semantics?.name ?? nameOf(el),
         disabled: semantics?.disabled ?? (('disabled' in el && el.disabled === true) || el.getAttribute('aria-disabled') === 'true')
       };
+      node.actions = semantics?.actions ?? (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? ['input', 'click'] : el.isContentEditable ? ['input', 'click'] : ['click']);
       if (semantics?.value !== undefined) node.value = semantics.value;
       else if ('value' in el && typeof el.value === 'string') node.value = el.value;
       elements.push(node);
@@ -84,9 +94,11 @@ export class BrowserDomPage implements PagePort {
     const adapter = this.observedAdapters.get(action.ref);
     const currentSemantics = adapter?.observe(element);
     if (!expected || expected.role !== (currentSemantics?.role ?? roleOf(element)) || expected.name !== (currentSemantics?.name ?? nameOf(element))) throw new Error('stale_ref');
-    if (('disabled' in element && element.disabled === true) || element.getAttribute('aria-disabled') === 'true') throw new Error('target_disabled');
+    if (currentSemantics?.disabled || ('disabled' in element && element.disabled === true) || element.getAttribute('aria-disabled') === 'true') throw new Error('target_disabled');
+    if (!expected.actions?.includes(action.kind)) throw new Error('unsupported_action');
     element.scrollIntoView({ block: 'nearest', behavior: 'instant' });
-    if (adapter?.execute && await adapter.execute(element, action)) return;
+    if (adapter?.execute && await adapter.execute(element, action, { root: this.root })) return;
+    if (action.kind === 'selectOption') throw new Error('unsupported_action');
     if (action.kind === 'click') { element.click(); return; }
     if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) throw new Error('not_an_editable_input');
     // Native setter triggers React-style controlled input observation more reliably than direct assignment.

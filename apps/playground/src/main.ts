@@ -1,10 +1,11 @@
 import { BrowserDomPage } from '../../../packages/dom-engine/src/browser-dom-page.js';
+import { ariaSelectAdapter } from '../../../packages/dom-engine/src/adapters/aria-select.js';
 import { DemoPlanner } from './demo-planner.js';
 import { runAgent } from '../../../packages/agent-core/src/run-agent.js';
 import type { AgentTrace, PageSnapshot } from '../../../packages/agent-core/src/types.js';
 
 const root = document.getElementById('sandbox') as HTMLElement;
-const page = new BrowserDomPage(root);
+const page = new BrowserDomPage(root, [ariaSelectAdapter]);
 const planner = new DemoPlanner();
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const text = (value: unknown) => document.createTextNode(String(value));
@@ -21,7 +22,7 @@ function entry(value: string, className = ''): HTMLElement {
 
 function renderSnapshot(snapshot: PageSnapshot): void {
   latestSnapshot = snapshot;
-  const output = latestSnapshot.elements.map((node) => `[ref=e${node.ref}] ${node.role} "${node.name}"${node.value !== undefined ? ` value=${JSON.stringify(node.value)}` : ''}${node.disabled ? ' [disabled]' : ''}`).join('\n');
+  const output = latestSnapshot.elements.map((node) => `[ref=e${node.ref}] ${node.role} "${node.name}"${node.value !== undefined ? ` value=${JSON.stringify(node.value)}` : ''}${node.disabled ? ' [disabled]' : ''}${node.actions ? ` [actions=${node.actions.join(',')}]` : ''}`).join('\n');
   $('snapshot').textContent = `Snapshot #${latestSnapshot.id}\n${output}\n\nVisible text excerpt:\n${latestSnapshot.text}\n\nScroll: ${Math.round(latestSnapshot.viewport.scrollTop)}/${latestSnapshot.viewport.scrollHeight}`;
 }
 
@@ -85,3 +86,26 @@ $('confirm-create').addEventListener('click', () => {
 });
 root.addEventListener('scroll', () => { if (!current) void refreshSnapshot(); });
 void refreshSnapshot();
+
+// Minimal accessible-select fixture; the adapter only invokes DOM events.
+// All application-specific state transitions are owned by this page.
+$('region-select').addEventListener('click', () => {
+  const combobox = $('region-select');
+  const menu = $('region-options');
+  const opening = combobox.getAttribute('aria-expanded') !== 'true';
+  combobox.setAttribute('aria-expanded', String(opening));
+  menu.hidden = !opening;
+});
+for (const option of document.querySelectorAll<HTMLElement>('#region-options [role="option"]')) {
+  option.addEventListener('click', () => {
+    const value = option.dataset.value ?? option.textContent?.trim() ?? '';
+    $('region-select').setAttribute('aria-valuetext', value);
+    $('region-select').textContent = `${value} ▾`;
+    $('region-select').setAttribute('aria-expanded', 'false');
+    $('region-options').hidden = true;
+    $('region-feedback').textContent = `当前区域：${value}`;
+    for (const peer of document.querySelectorAll<HTMLElement>('#region-options [role="option"]')) {
+      peer.setAttribute('aria-selected', String(peer === option));
+    }
+  });
+}

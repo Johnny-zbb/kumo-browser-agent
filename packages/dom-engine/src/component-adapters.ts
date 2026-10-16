@@ -5,6 +5,12 @@ export interface ComponentSemantics {
   name: string;
   value?: string;
   disabled?: boolean;
+  actions?: readonly PageAction['kind'][];
+}
+
+export interface AdapterActionContext {
+  /** Authorized root; adapters must not interact with outside elements. */
+  root: HTMLElement;
 }
 
 /**
@@ -18,7 +24,7 @@ export interface ComponentAdapter {
   matches(element: HTMLElement): boolean;
   observe(element: HTMLElement): ComponentSemantics;
   /** Return true only if the action was handled. */
-  execute?(element: HTMLElement, action: PageAction): boolean | Promise<boolean>;
+  execute?(element: HTMLElement, action: PageAction, context: AdapterActionContext): boolean | Promise<boolean>;
 }
 
 export class ComponentAdapterRegistry {
@@ -29,6 +35,10 @@ export class ComponentAdapterRegistry {
     for (const adapter of adapters) {
       if (!adapter.id.trim() || !adapter.selector.trim() || ids.has(adapter.id)) {
         throw new Error(`invalid_component_adapter_${adapter.id}`);
+      }
+      if (typeof document !== 'undefined') {
+        try { document.createElement('div').matches(adapter.selector); }
+        catch { throw new Error(`invalid_component_selector_${adapter.id}`); }
       }
       ids.add(adapter.id);
     }
