@@ -23,6 +23,11 @@ export const ariaSelectAdapter: ComponentAdapter = {
     const disabled = element.getAttribute('aria-disabled') === 'true' || element.hasAttribute('disabled');
     return { role: 'combobox', name, value, disabled, actions: ['click', 'selectOption'] };
   },
+  ownedSubtrees(element, context) {
+    const id = element.getAttribute('aria-controls');
+    const popup = id ? element.ownerDocument.getElementById(id) : null;
+    return popup && context.root.contains(popup) ? [popup] : [];
+  },
   async execute(element, action: PageAction, context: AdapterActionContext): Promise<boolean> {
     if (action.kind !== 'selectOption') return false;
     const controlsId = element.getAttribute('aria-controls');
