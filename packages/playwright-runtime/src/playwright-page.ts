@@ -67,7 +67,10 @@ export class PlaywrightPagePort implements PagePort {
   }
 
   async navigate(target: string): Promise<void> {
-    this.ready();
+    if (this.disposed || !this.started) throw new Error('browser_port_not_started');
+    // A newly-created Playwright page starts at about:blank. Allow ONLY the
+    // first explicitly approved navigation from that bootstrap document.
+    if (this.page.url() !== 'about:blank') this.policy.assertAllowed(this.page.url());
     this.policy.assertAllowed(target);
     this.last = null;
     await this.page.goto(target, { waitUntil: 'domcontentloaded' });
