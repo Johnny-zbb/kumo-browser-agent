@@ -1,11 +1,14 @@
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { resolve, join, extname, sep } from 'node:path';
+import { createLocalAgentBridge } from './local-agent-bridge.mjs';
 const root = resolve(import.meta.dirname, '..');
 const port = Number(process.env.PORT || 4173);
+const agentBridge = createLocalAgentBridge({ port, endpoint: process.env.KUMO_LLM_ENDPOINT, model: process.env.KUMO_LLM_MODEL, apiKey: process.env.KUMO_LLM_API_KEY });
 const mime = { '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml' };
 createServer(async (req, res) => {
   try {
+    if (await agentBridge(req, res)) return;
     const url = new URL(req.url || '/', `http://localhost:${port}`);
     const mapped = url.pathname === '/' ? '/apps/playground/index.html' : url.pathname;
     const file = resolve(root, '.' + mapped);

@@ -60,6 +60,7 @@
           <div id="status" class="sr-only" role="status" aria-live="polite">READY · 输入任务后启动</div>
           <p class="dock-caption">DOM AGENT · 本地沙盒演示 · 非真实云端操作</p>
         </div>
+        <div id="agent-approval" class="agent-approval" role="alertdialog" aria-modal="true" aria-label="确认 Agent 操作" hidden><div class="approval-card"><strong>需要你的确认</strong><p id="approval-description"></p><div class="approval-actions"><button type="button" id="reject-action">拒绝</button><button type="button" id="approve-action">确认执行</button></div></div></div>
         <div id="inspector-backdrop" class="inspector-backdrop" hidden></div>
         <aside id="dev-inspector" class="dev-inspector" role="dialog" aria-modal="true" aria-labelledby="inspector-title" hidden>
           <div class="inspector-head"><div><span class="inspector-eyebrow">DEVELOPER TOOLS</span><h2 id="inspector-title">Agent 内部视图</h2></div><button type="button" id="inspector-close" class="icon-button" aria-label="关闭开发者检查器">✕</button></div>
@@ -67,6 +68,7 @@
             <button type="button" id="tab-trace" role="tab" aria-controls="panel-trace" aria-selected="true" tabindex="0" data-inspector-tab="trace">Trace <span>执行轨迹</span></button>
             <button type="button" id="tab-snapshot" role="tab" aria-controls="panel-snapshot" aria-selected="false" tabindex="-1" data-inspector-tab="snapshot">Snapshot <span>页面语义</span></button>
           </div>
+          <div class="inspector-mode"><label for="planner-mode">Planner</label><select id="planner-mode" aria-label="规划器模式"><option value="demo">Demo · 规则规划器</option><option value="llm" disabled>LLM · 本地模型（未配置）</option></select><small id="planner-mode-description">默认模式，不连接模型服务。</small></div>
           <section id="panel-trace" class="inspector-panel" role="tabpanel" aria-labelledby="tab-trace"><p class="inspector-help">每次 Observe → Decide → Act 的结果</p><div class="timeline" id="timeline"><div class="empty">执行任务后显示逐轮决策与动作。</div></div></section>
           <section id="panel-snapshot" class="inspector-panel" role="tabpanel" aria-labelledby="tab-snapshot" hidden><div class="inspector-tools"><span>最新 DOM Snapshot</span><button id="inspect" type="button" class="small" aria-label="重新观察页面">↻ 重新观察</button></div><pre id="snapshot">Capturing...</pre></section>
         </aside>
