@@ -112,4 +112,15 @@ See [runtime architecture](docs/architecture/playwright-runtime.md), the opt-in 
 
 ### 免费 LLM API（Groq / Gemini）
 
-现有的 OpenAI-compatible Node Bridge 支持免费 API，不需要将密钥交给聊天助手。复制 `.env.example` 到 Git 忽略的 `.env.local`，在本地填写 Key，运行 `npm run dev:llm`。安装步骤、额度和数据隐私边界见 [免费 LLM 接入指南](docs/guides/free-llm-api.md)。**不要把本地 Bridge 暴露在公网，也不要处理包含秘密的真实控制台页面。**
+可以继续使用现有的 OpenAI-compatible Node Bridge，不需要把密钥交给聊天助手。复制 `.env.example` 到 Git 忽略的 `.env.local`，在本地填写自己的 API Key，然后运行 `npm run dev:llm`。免费额度、密钥保护、提供商的数据处理说明见 [免费 API 接入指南](docs/guides/free-llm-api.md)。**不要将本地 Agent Bridge 暴露到公网或对真实敏感网页执行任务。**
+
+## Browser Agent Eval (synthetic v0.1)
+
+The reproducible evaluation runner exercises the same `PlaywrightPagePort`, Semantic Snapshot and Agent Runner used by the development Browser Runtime.
+
+```bash
+npm run eval:baseline    # deterministic scripted planner, all 16 local Chromium scenarios
+npm run eval:llm         # opt-in REAL LLM, four diverse scenarios by default, requires .env.local
+```
+
+The evaluator reports per-task completion, independent goal verification, latency, turn count, model call count and failure classes as JSON under `test-results/eval/`. **Baseline success is a regression signal, not a model success rate.** LLM runs are never enabled in CI, need your local API key, and only send synthetic test-page content to the provider. See [evaluation guide](docs/guides/browser-agent-eval.md).
