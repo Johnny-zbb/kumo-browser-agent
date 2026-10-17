@@ -2,6 +2,7 @@ import { BrowserDomPage } from '../../../packages/dom-engine/src/browser-dom-pag
 import { serializeSemanticTree } from '../../../packages/dom-engine/src/snapshot/build-tree.js';
 import { ariaSelectAdapter } from '../../../packages/dom-engine/src/adapters/aria-select.js';
 import { DemoPlanner } from './demo-planner.js';
+import { DemoTaskVerifier } from './demo-task-verifier.js';
 import { runAgent } from '../../../packages/agent-core/src/run-agent.js';
 import type { AgentTrace, PagePort, PageSnapshot } from '../../../packages/agent-core/src/types.js';
 import { AgentModeView } from './agent-mode.js';
@@ -10,6 +11,7 @@ import { DevInspector } from './dev-inspector.js';
 const root = document.getElementById('sandbox') as HTMLElement;
 const page = new BrowserDomPage(root, [ariaSelectAdapter]);
 const planner = new DemoPlanner();
+const taskVerifier = new DemoTaskVerifier();
 const agentMode = new AgentModeView();
 const inspector = new DevInspector();
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
@@ -36,8 +38,9 @@ async function refreshSnapshot(): Promise<void> {
 }
 
 function renderTrace(trace: AgentTrace): void {
+  const proof = trace.taskVerification ?? trace.actionVerification;
   const action = trace.decision.kind === 'act' ? `${trace.decision.action.kind}${'ref' in trace.decision.action ? ` e${trace.decision.action.ref}` : ''}` : trace.decision.kind;
-  $('timeline').prepend(entry(`#${trace.turn}  ${action}  ·  ${trace.decision.reason}${trace.error ? ` · ${trace.error}` : ''}`, trace.actionResult === 'error' ? 'error' : ''));
+  $('timeline').prepend(entry(`#${trace.turn}  ${action}  ·  ${trace.decision.reason}${trace.error ? ` · ${trace.error}` : ''}${proof ? ` · ${proof.status}: ${proof.reason}` : ''}`, trace.actionResult === 'error' || trace.actionVerification?.status === 'mismatch' || trace.taskVerification?.status === 'rejected' ? 'error' : ''));
   agentMode.update(trace.turn, trace.decision.reason);
 }
 
@@ -78,6 +81,7 @@ async function begin(task: string): Promise<void> {
     $('status').textContent = `RUNNING · ${task}`;
     const result = await runAgent(task, demonstratedPage, planner, {
       maxTurns: 12,
+      taskVerifier,
       signal: controller.signal,
       onTrace: renderTrace,
       onObserve: (snapshot, turn) => {

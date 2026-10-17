@@ -90,5 +90,6 @@ test('fails safely when the same action has no effect', async () => {
   page.execute = async () => {}; // the page isn't changing
   const result = await runAgent('搜索 agent', page, new DemoPlanner());
   assert.equal(result.status, 'failed');
-  assert.match(result.reason, /没有进展/);
+  assert.match(result.reason, /动作结果与预期不符/);
+  assert.equal(result.history[0].actionVerification?.status, 'mismatch');
 });

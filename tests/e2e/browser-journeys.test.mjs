@@ -86,6 +86,8 @@ test('change custom region through the Agent, verify re-observation and trace', 
     assert.match(await page.locator('#region-feedback').innerText(), /华东-上海一/);
     await page.locator('#inspector-toggle').click();
     assert.match(await page.locator('#timeline').innerText(), /selectOption/);
+    assert.match(await page.locator('#timeline').innerText(), /matched:/);
+    assert.match(await page.locator('#timeline').innerText(), /passed:/);
     await page.locator('#tab-snapshot').click();
     assert.match(await page.locator('#snapshot').innerText(), /华东-上海一/);
   });

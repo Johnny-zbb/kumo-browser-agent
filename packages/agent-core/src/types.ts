@@ -53,11 +53,29 @@ export interface PlannerPort {
   decide(task: string, snapshot: PageSnapshot, history: readonly AgentTrace[]): Promise<Decision>;
 }
 
+export interface ActionVerification {
+  /** matched is a proven target value; changed is observable but not goal confirmation. */
+  status: 'matched' | 'changed' | 'unconfirmed' | 'mismatch';
+  reason: string;
+}
+
+export interface TaskVerification {
+  status: 'passed' | 'rejected' | 'inconclusive';
+  reason: string;
+}
+
+/** Task completion evidence is checked independently of PlannerPort. */
+export interface TaskVerifierPort {
+  verify(task: string, snapshot: PageSnapshot): TaskVerification | Promise<TaskVerification>;
+}
+
 export interface AgentTrace {
   turn: number;
   snapshot: PageSnapshot;
   decision: Decision;
   actionResult: 'ok' | 'error' | 'skipped';
+  actionVerification?: ActionVerification;
+  taskVerification?: TaskVerification;
   error?: string;
 }
 
