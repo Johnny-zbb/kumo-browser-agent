@@ -7,10 +7,15 @@ import { runAgent } from '../../../packages/agent-core/src/run-agent.js';
 import type { AgentTrace, PagePort, PageSnapshot } from '../../../packages/agent-core/src/types.js';
 import { AgentModeView } from './agent-mode.js';
 import { DevInspector } from './dev-inspector.js';
+import { BridgePlanner } from './bridge-planner.js';
+import { SandboxActionPolicy } from '../../../packages/agent-core/src/action-policy.js';
+import { requestActionApproval } from './approval-dialog.js';
 
 const root = document.getElementById('sandbox') as HTMLElement;
 const page = new BrowserDomPage(root, [ariaSelectAdapter]);
-const planner = new DemoPlanner();
+const demoPlanner = new DemoPlanner();
+const bridgePlanner = new BridgePlanner();
+const actionPolicy = new SandboxActionPolicy();
 const taskVerifier = new DemoTaskVerifier();
 const agentMode = new AgentModeView();
 const inspector = new DevInspector();
@@ -79,9 +84,11 @@ async function begin(task: string): Promise<void> {
       return;
     }
     $('status').textContent = `RUNNING · ${task}`;
-    const result = await runAgent(task, demonstratedPage, planner, {
+    const llmMode = ($('planner-mode') as HTMLSelectElement).value === 'llm';
+    const result = await runAgent(task, demonstratedPage, llmMode ? bridgePlanner : demoPlanner, {
       maxTurns: 12,
       taskVerifier,
+      ...(llmMode ? { actionPolicy, requestApproval: requestActionApproval } : {}),
       signal: controller.signal,
       onTrace: renderTrace,
       onObserve: (snapshot, turn) => {
@@ -120,6 +127,20 @@ $('task-form').addEventListener('submit', (event) => {
     return;
   }
   void begin(task);
+});
+void fetch('/api/agent/config', { credentials: 'omit', cache: 'no-store' })
+  .then(async response => response.ok ? response.json() as Promise<{llmConfigured?: boolean}> : {llmConfigured: false})
+  .then(config => {
+    const option = ($('planner-mode') as HTMLSelectElement).querySelector<HTMLOptionElement>('option[value="llm"]');
+    if (option) {
+      option.disabled = !config.llmConfigured;
+      option.textContent = config.llmConfigured ? 'LLM · 本地模型' : 'LLM · 本地模型（未配置）';
+    }
+  }).catch(() => {});
+$('planner-mode').addEventListener('change', () => {
+  $('planner-mode-description').textContent = ($('planner-mode') as HTMLSelectElement).value === 'llm'
+    ? 'LLM 提供规划；所有动作受安全策略约束，创建等操作需要人工确认。'
+    : '默认模式，不连接模型服务。';
 });
 $('inspect').addEventListener('click', () => void refreshSnapshot());
 $('search-btn').addEventListener('click', () => {

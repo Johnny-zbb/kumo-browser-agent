@@ -2,7 +2,7 @@
 
 A small, clean TypeScript monorepo for a **browser agent that can eventually use DOM, Vision or Hybrid perception**.
 
-> Status: `0.2.0` / DOM + accessible-component playground. **This version uses a deterministic demonstration planner, not an LLM.** It does not control arbitrary third-party websites.
+> Status: `0.2.0` / DOM + accessible-component playground. **Demo mode uses deterministic rules; opt-in local LLM mode requires server-side configuration.** It does not control arbitrary third-party websites.
 
 ## Quick start
 
@@ -83,3 +83,15 @@ Every successful action is followed by `settle()` and a **new observation**. Inp
 ### Optional real-model planning (server-side)
 
 `LlmPlanner` accepts a model-port implementation and emits a strictly validated `Decision` from the semantic snapshot. A Node-only OpenAI-compatible transport and `scripts/llm-plan.mjs` can plan one action against a saved snapshot. The Playground **still defaults to `DemoPlanner`**; it does not expose model keys or run arbitrary third-party pages. See [LLM Planner design](docs/architecture/llm-planner.md).
+
+## Local LLM Mode (opt-in, development only)
+
+The Playground starts in **Demo** mode without any model or credentials. The developer inspector contains the Planner switch. To enable the **LLM · 本地模型** option, configure an OpenAI-compatible model in the Node server environment:
+
+```bash
+KUMO_LLM_ENDPOINT=http://127.0.0.1:1234/v1/chat/completions \
+KUMO_LLM_MODEL=your-local-model \
+KUMO_LLM_API_KEY=your-local-token npm run dev
+```
+
+The API key is never sent to the browser. The server returns validated **single-step decisions only**. Browser execution is scoped to the local Sandbox and guarded by `SandboxActionPolicy`: destructive targets and credential fields are denied; commit/submit operations request a **human approval click** before executing. Cancelling aborts the model request or pending approval. For detailed boundaries, read [Model Bridge & Action Policy](docs/architecture/model-bridge.md). This local development bridge is **not** a production-ready authenticated browser automation API.
