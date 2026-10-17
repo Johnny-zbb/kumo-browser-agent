@@ -22,6 +22,25 @@ Press **开始任务** (or any quick-task chip): a circular reveal expands from 
 The circular reveal is adapted from [Lucian UX/UI Prompt #045](https://lucianlabs.dev/uxui-prompt/#045), MIT License © 2026 Seokwoooo, with attribution retained in source. The viewport frame is a custom addition.
  Run one of four demonstration tasks: search instances, create a mock instance, change the custom region selector, or scroll to the bottom. Actions operate only inside the local demonstration page.
 
+## Browser E2E regression tests
+
+Five Chromium journeys exercise the **compiled application**: custom region selection,
+search, create instance, scrolling to the bottom and cancelling during the Agent Mode
+transition. A failed journey writes a screenshot and error details to `test-results/e2e/`.
+
+```bash
+npm install
+npx playwright install chromium
+npm run test:e2e
+```
+
+CI installs the browser and runs these journeys against the real local HTTP server.
+In environments where Chromium blocks *all* HTTP navigation by administrator policy,
+`KUMO_E2E_ISOLATED=1 npm run test:e2e` runs the same compiled modules in an
+isolated document. This opt-in mode validates the UI/agent path but **does not**
+prove the HTTP server path. For system-installed Chromium, optionally set
+`KUMO_CHROMIUM_EXECUTABLE=/path/to/chromium`.
+
 ## Workspace
 
 - `packages/agent-core`: task language (`PageSnapshot`, `PageAction`, `Decision`) and the agent loop. No browser DOM dependencies.

@@ -12,9 +12,11 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test tests/*.test.mjs",
-    "dev": "npm run build && node scripts/dev-server.mjs"
+    "dev": "npm run build && node scripts/dev-server.mjs",
+    "test:e2e": "npm run build && node --test --test-concurrency=1 tests/e2e/*.test.mjs"
   },
   "devDependencies": {
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "playwright": "^1.57.0"
   }
 }
