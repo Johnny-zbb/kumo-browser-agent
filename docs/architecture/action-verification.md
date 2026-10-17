@@ -17,3 +17,9 @@ All state transitions remain in `packages/agent-core`; the demo-specific complet
 - The snapshot has a stable element ref for still-connected elements but observation IDs change. Action effects are checked against fresh observations.
 
 See `tests/action-verification.test.mjs` and `tests/e2e/browser-journeys.test.mjs` for regression coverage.
+
+## Approval-time scope and freshness
+
+A user approval does not authorize arbitrary later DOM targets with the same label. Immediately before dispatch, the engine verifies that the observed target is still connected **inside its authorized root**, visible, and matches the observed role, name and value. After scrolling the element into view, it validates again. Targeted scrolls use the same checks.
+
+If the page changes or moves the target during an approval wait, the action returns `stale_ref` and the runner re-observes instead of blindly replaying. Browser tests cover moving an approved button outside the root and changes to input values. These DOM checks are defense in depth; they do not replace trustworthy operation identity and authorization for hostile pages.

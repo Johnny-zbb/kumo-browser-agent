@@ -81,23 +81,38 @@ export class BrowserDomPage implements PagePort {
     return { id: ++this.sequence, url: location.href, title: document.title, tree, elements, text, viewport: { scrollTop, clientHeight, scrollHeight, atBottom } };
   }
 
+  /** Resolve refs against the current authorized root and the exact observed semantics. */
+  private freshTarget(ref: number, observed: PageSnapshot): { element: HTMLElement; adapter?: ComponentAdapter } {
+    const element = this.observedRefs.get(ref);
+    // A target moved out of the authorized root is no longer actionable,
+    // even if it stays connected to the document during a human approval wait.
+    if (!element || !element.isConnected || !this.root.contains(element) || !isVisible(element)) throw new Error('stale_ref');
+    const expected = observed.elements.find((node) => node.ref === ref);
+    const adapter = this.observedAdapters.get(ref);
+    const semantics = adapter?.observe(element);
+    const currentRole = semantics?.role ?? roleOf(element);
+    const currentName = semantics?.name ?? nameOf(element, this.root);
+    const currentValue = semantics?.value ?? ('value' in element && typeof element.value === 'string' ? element.value : undefined);
+    if (!expected || expected.role !== currentRole || expected.name !== currentName || expected.value !== currentValue) throw new Error('stale_ref');
+    if (semantics?.disabled || ('disabled' in element && element.disabled === true) || element.getAttribute('aria-disabled') === 'true') throw new Error('target_disabled');
+    return { element, ...(adapter ? { adapter } : {}) };
+  }
+
   async execute(action: PageAction, observed: PageSnapshot): Promise<void> {
     if (observed.id !== this.sequence) throw new Error('stale_snapshot');
     if (action.kind === 'scroll') {
-      const target = action.ref === undefined ? this.root : this.observedRefs.get(action.ref);
-      if (!target || !target.isConnected) throw new Error('stale_ref');
+      const target = action.ref === undefined ? this.root : this.freshTarget(action.ref, observed).element;
+      if (!target.isConnected || !this.root.contains(target)) throw new Error('stale_ref');
       target.scrollBy({ top: (action.direction === 'down' ? 1 : -1) * 380, behavior: 'instant' });
       return;
     }
-    const element = this.observedRefs.get(action.ref);
-    if (!element || !element.isConnected || !isVisible(element)) throw new Error('stale_ref');
+    const { element, adapter } = this.freshTarget(action.ref, observed);
     const expected = observed.elements.find((node) => node.ref === action.ref);
-    const adapter = this.observedAdapters.get(action.ref);
-    const currentSemantics = adapter?.observe(element);
-    if (!expected || expected.role !== (currentSemantics?.role ?? roleOf(element)) || expected.name !== (currentSemantics?.name ?? nameOf(element, this.root))) throw new Error('stale_ref');
-    if (currentSemantics?.disabled || ('disabled' in element && element.disabled === true) || element.getAttribute('aria-disabled') === 'true') throw new Error('target_disabled');
-    if (!expected.actions?.includes(action.kind)) throw new Error('unsupported_action');
+    if (!expected?.actions?.includes(action.kind)) throw new Error('unsupported_action');
     element.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    // Scrolling can fire application handlers that re-render or move the target.
+    // Re-check immediately before dispatching the approved action.
+    this.freshTarget(action.ref, observed);
     if (adapter?.execute && await adapter.execute(element, action, { root: this.root })) return;
     if (action.kind === 'selectOption') throw new Error('unsupported_action');
     if (action.kind === 'click') { element.click(); return; }
