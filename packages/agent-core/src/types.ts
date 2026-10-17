@@ -50,7 +50,7 @@ export interface PagePort {
 }
 
 export interface PlannerPort {
-  decide(task: string, snapshot: PageSnapshot, history: readonly AgentTrace[]): Promise<Decision>;
+  decide(task: string, snapshot: PageSnapshot, history: readonly AgentTrace[], signal?: AbortSignal): Promise<Decision>;
 }
 
 export interface ActionVerification {

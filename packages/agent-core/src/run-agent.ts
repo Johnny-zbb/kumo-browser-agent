@@ -30,8 +30,9 @@ export async function runAgent(task: string, page: PagePort, planner: PlannerPor
       snapshot = await page.observe();
       if (options.signal?.aborted) return result('stopped', '用户取消');
       options.onObserve?.(snapshot, turn);
-      decision = await planner.decide(task, snapshot, history);
+      decision = await planner.decide(task, snapshot, history, options.signal);
     } catch (error) {
+      if (options.signal?.aborted) return result('stopped', '用户取消');
       return result('failed', `观察或决策失败：${error instanceof Error ? error.message : String(error)}`);
     }
 

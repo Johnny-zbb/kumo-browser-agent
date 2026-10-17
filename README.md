@@ -79,3 +79,7 @@ The initial repository is public. A software license has not yet been selected; 
 ### Action and task verification
 
 Every successful action is followed by `settle()` and a **new observation**. Input/select actions verify the observed target value; clicks report `changed` or `unconfirmed` without claiming that a task succeeded. An optional independent `TaskVerifierPort` checks any planner `done` decision; the Playground enables it through `DemoTaskVerifier` for all four supported tasks. If independent evidence is missing, the run fails rather than reporting success. See [verification design](docs/architecture/action-verification.md).
+
+### Optional real-model planning (server-side)
+
+`LlmPlanner` accepts a model-port implementation and emits a strictly validated `Decision` from the semantic snapshot. A Node-only OpenAI-compatible transport and `scripts/llm-plan.mjs` can plan one action against a saved snapshot. The Playground **still defaults to `DemoPlanner`**; it does not expose model keys or run arbitrary third-party pages. See [LLM Planner design](docs/architecture/llm-planner.md).
