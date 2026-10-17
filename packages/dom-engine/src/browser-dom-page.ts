@@ -1,5 +1,6 @@
 import type { PageAction, PageElement, PagePort, PageSnapshot } from '../../agent-core/src/types.js';
 import { ComponentAdapterRegistry, type ComponentAdapter } from './component-adapters.js';
+import { buildSemanticTree } from './snapshot/build-tree.js';
 
 function isVisible(el: Element): boolean {
   if (!(el instanceof HTMLElement)) return false;
@@ -18,10 +19,10 @@ function roleOf(el: HTMLElement): string | null {
   return el.isContentEditable ? 'textbox' : null;
 }
 
-function nameOf(el: HTMLElement): string {
+function nameOf(el: HTMLElement, root: HTMLElement): string {
   const labelId = el.getAttribute('aria-labelledby');
-  const labelled = labelId?.split(/\s+/).map((id) => document.getElementById(id)?.textContent?.trim() ?? '').filter(Boolean).join(' ');
-  const htmlLabel = 'labels' in el && el.labels instanceof NodeList ? Array.from(el.labels).map((label) => label.textContent?.trim()).join(' ') : '';
+  const labelled = labelId?.split(/\s+/).map((id) => (root.contains(el.ownerDocument.getElementById(id)) ? el.ownerDocument.getElementById(id)?.textContent?.trim() : '') ?? '').filter(Boolean).join(' ');
+  const htmlLabel = 'labels' in el && el.labels instanceof NodeList ? Array.from(el.labels).filter(label => root.contains(label)).map(label => label.textContent?.trim()).join(' ') : '';
   return (labelled || el.getAttribute('aria-label') || htmlLabel || el.getAttribute('placeholder') || el.getAttribute('title') || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 90);
 }
 
@@ -42,42 +43,42 @@ export class BrowserDomPage implements PagePort {
     this.observedRefs = new Map();
     this.observedAdapters = new Map();
     const elements: PageElement[] = [];
-    const selectors = ['button', 'input', 'textarea', 'select', 'a[href]', '[role="button"]', '[role="textbox"]', '[contenteditable="true"]', ...this.registry.selectors()];
-    const nodes = this.root.querySelectorAll<HTMLElement>(selectors.join(','));
-    for (const el of nodes) {
-      if (!isVisible(el) || el.closest('[hidden], [aria-hidden="true"], [inert]')) continue;
-      // A recognized component is an atomic semantic node. Hide implementation
-      // controls/inner buttons from the Agent; only the adapter exposes actions.
-      let parent = el.parentElement;
-      let insideWidget = false;
-      while (parent && parent !== this.root) {
-        if (this.registry.resolve(parent)) { insideWidget = true; break; }
-        parent = parent.parentElement;
+    const ownedSubtrees = new Set<Element>();
+    // Custom components may render popup controls beside the trigger. They still
+    // belong to the same semantic target and must not receive independent refs.
+    for (const candidate of this.root.querySelectorAll<HTMLElement>(this.registry.selectors().join(',') || ':not(*)')) {
+      const adapter = this.registry.resolve(candidate);
+      for (const owned of adapter?.ownedSubtrees?.(candidate, { root: this.root }) ?? []) {
+        if (owned !== candidate && this.root.contains(owned)) ownedSubtrees.add(owned);
       }
-      if (insideWidget) continue;
+    }
+    const tree = buildSemanticTree(this.root, (el) => {
       const adapter = this.registry.resolve(el);
       const semantics = adapter?.observe(el);
+      const actionable = Boolean(adapter) || el.matches('button, input:not([type="hidden"]), textarea, select, a[href], [role="button"], [role="textbox"], [role="combobox"], [role="checkbox"], [role="switch"], [contenteditable="true"]');
+      if (!actionable || elements.length >= 100) return null;
       const role = semantics?.role ?? roleOf(el);
-      if (!role || elements.length >= 100) continue;
+      if (!role) return null;
       let ref = this.knownRefs.get(el);
       if (!ref) { ref = this.nextRef++; this.knownRefs.set(el, ref); }
       this.observedRefs.set(ref, el);
       if (adapter) this.observedAdapters.set(ref, adapter);
       const node: PageElement = {
-        ref, role, name: semantics?.name ?? nameOf(el),
+        ref, role, name: semantics?.name ?? nameOf(el, this.root),
         disabled: semantics?.disabled ?? (('disabled' in el && el.disabled === true) || el.getAttribute('aria-disabled') === 'true')
       };
       node.actions = semantics?.actions ?? (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? ['input', 'click'] : el.isContentEditable ? ['input', 'click'] : ['click']);
       if (semantics?.value !== undefined) node.value = semantics.value;
       else if ('value' in el && typeof el.value === 'string') node.value = el.value;
       elements.push(node);
-    }
+      return node;
+    }, el => ownedSubtrees.has(el));
     const text = (this.root.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 1400);
     const scrollTop = this.root.scrollTop;
     const clientHeight = this.root.clientHeight;
     const scrollHeight = this.root.scrollHeight;
     const atBottom = scrollTop + clientHeight >= scrollHeight - 3;
-    return { id: ++this.sequence, url: location.href, title: document.title, elements, text, viewport: { scrollTop, clientHeight, scrollHeight, atBottom } };
+    return { id: ++this.sequence, url: location.href, title: document.title, tree, elements, text, viewport: { scrollTop, clientHeight, scrollHeight, atBottom } };
   }
 
   async execute(action: PageAction, observed: PageSnapshot): Promise<void> {
@@ -93,7 +94,7 @@ export class BrowserDomPage implements PagePort {
     const expected = observed.elements.find((node) => node.ref === action.ref);
     const adapter = this.observedAdapters.get(action.ref);
     const currentSemantics = adapter?.observe(element);
-    if (!expected || expected.role !== (currentSemantics?.role ?? roleOf(element)) || expected.name !== (currentSemantics?.name ?? nameOf(element))) throw new Error('stale_ref');
+    if (!expected || expected.role !== (currentSemantics?.role ?? roleOf(element)) || expected.name !== (currentSemantics?.name ?? nameOf(element, this.root))) throw new Error('stale_ref');
     if (currentSemantics?.disabled || ('disabled' in element && element.disabled === true) || element.getAttribute('aria-disabled') === 'true') throw new Error('target_disabled');
     if (!expected.actions?.includes(action.kind)) throw new Error('unsupported_action');
     element.scrollIntoView({ block: 'nearest', behavior: 'instant' });

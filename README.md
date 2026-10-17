@@ -44,10 +44,12 @@ prove the HTTP server path. For system-installed Chromium, optionally set
 ## Workspace
 
 - `packages/agent-core`: task language (`PageSnapshot`, `PageAction`, `Decision`) and the agent loop. No browser DOM dependencies.
-- `packages/dom-engine`: in-page DOM snapshot and action implementation, including `ComponentAdapterRegistry` and the tested ARIA-combobox `selectOption` adapter.
+- `packages/dom-engine`: in-page semantic tree + backward-compatible flat action index, stable refs and action implementation, including `ComponentAdapterRegistry` and the tested ARIA-combobox `selectOption` adapter.
 - `apps/playground`: standalone controlled demo and deterministic planner.
 - `tests`: core loop tests; includes stale refs, cancellation, no-progress detection, and max turns.
 - `docs/architecture`: design decisions and next milestones.
+
+See [Semantic Snapshot v0.3](docs/architecture/semantic-snapshot.md) for hierarchy, limits and extension rules.
 
 ## Design principles
 

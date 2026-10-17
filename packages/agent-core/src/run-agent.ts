@@ -40,7 +40,7 @@ export async function runAgent(task: string, page: PagePort, planner: PlannerPor
     }
 
     // Avoid infinite loops if a plan repeatedly performs the same action without changing observation.
-    const signature = JSON.stringify({ action: decision.action, elements: snapshot.elements, text: snapshot.text, viewport: snapshot.viewport });
+    const signature = JSON.stringify({ action: decision.action, tree: snapshot.tree, elements: snapshot.elements, text: snapshot.text, viewport: snapshot.viewport });
     repeated = signature === lastSignature ? repeated + 1 : 0;
     lastSignature = signature;
     if (repeated >= 2) {

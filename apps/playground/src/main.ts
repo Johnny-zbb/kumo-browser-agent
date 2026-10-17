@@ -1,4 +1,5 @@
 import { BrowserDomPage } from '../../../packages/dom-engine/src/browser-dom-page.js';
+import { serializeSemanticTree } from '../../../packages/dom-engine/src/snapshot/build-tree.js';
 import { ariaSelectAdapter } from '../../../packages/dom-engine/src/adapters/aria-select.js';
 import { DemoPlanner } from './demo-planner.js';
 import { runAgent } from '../../../packages/agent-core/src/run-agent.js';
@@ -26,7 +27,7 @@ function entry(value: string, className = ''): HTMLElement {
 
 function renderSnapshot(snapshot: PageSnapshot): void {
   latestSnapshot = snapshot;
-  const output = latestSnapshot.elements.map((node) => `[ref=e${node.ref}] ${node.role} "${node.name}"${node.value !== undefined ? ` value=${JSON.stringify(node.value)}` : ''}${node.disabled ? ' [disabled]' : ''}${node.actions ? ` [actions=${node.actions.join(',')}]` : ''}`).join('\n');
+  const output = serializeSemanticTree(latestSnapshot.tree);
   $('snapshot').textContent = `Snapshot #${latestSnapshot.id}\n${output}\n\nVisible text excerpt:\n${latestSnapshot.text}\n\nScroll: ${Math.round(latestSnapshot.viewport.scrollTop)}/${latestSnapshot.viewport.scrollHeight}`;
 }
 
@@ -133,6 +134,7 @@ $('confirm-create').addEventListener('click', () => {
   instanceCount++;
   const el = document.createElement('div');
   el.className = 'resource-row';
+  el.setAttribute('role', 'listitem');
   el.textContent = `ECS · ${value} · running · ID-${instanceCount}`;
   $('instance-list').prepend(el);
   $('create-feedback').textContent = `已创建实例：${value}`;

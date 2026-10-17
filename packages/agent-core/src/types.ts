@@ -9,10 +9,24 @@ export interface PageElement {
   actions?: readonly PageAction['kind'][];
 }
 
+/** Semantic context preserved for planning; only actionable leaves receive a ref. */
+export interface SemanticTreeNode {
+  role: string;
+  name?: string;
+  ref?: number;
+  value?: string;
+  disabled?: boolean;
+  actions?: readonly PageAction['kind'][];
+  children?: readonly SemanticTreeNode[];
+}
+
 export interface PageSnapshot {
   id: number;
   url: string;
   title: string;
+  /** Context-aware structure, suitable for LLM prompts and inspector rendering. */
+  tree: readonly SemanticTreeNode[];
+  /** Backward compatible flat target index for the current deterministic planner. */
   elements: readonly PageElement[];
   text: string;
   viewport: { scrollTop: number; clientHeight: number; scrollHeight: number; atBottom: boolean };

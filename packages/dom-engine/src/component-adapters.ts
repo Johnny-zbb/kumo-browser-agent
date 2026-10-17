@@ -23,6 +23,8 @@ export interface ComponentAdapter {
   readonly priority?: number;
   matches(element: HTMLElement): boolean;
   observe(element: HTMLElement): ComponentSemantics;
+  /** Portals/popovers semantically owned by this widget but outside its DOM subtree. */
+  ownedSubtrees?(element: HTMLElement, context: AdapterActionContext): readonly Element[];
   /** Return true only if the action was handled. */
   execute?(element: HTMLElement, action: PageAction, context: AdapterActionContext): boolean | Promise<boolean>;
 }

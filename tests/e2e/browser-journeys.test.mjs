@@ -124,3 +124,42 @@ test('stop during the circular entry exits Agent Mode without executing', async 
     assert.match(await page.locator('#status').innerText(), /STOPPED/);
   });
 });
+
+
+test('semantic snapshot preserves duplicate button context and excludes hidden/outside controls', async t => {
+  await scenario(t, 'semantic-tree', async page => {
+    await page.locator('#sandbox').evaluate(root => {
+      const group = document.createElement('section');
+      group.setAttribute('aria-label', '操作列表');
+      group.innerHTML = `<ul aria-label="服务">
+        <li>资源甲 <button type="button">详情</button></li>
+        <li>资源乙 <button type="button">详情</button></li>
+        <li hidden>秘密资源 <button type="button">隐藏操作</button></li>
+      </ul>`;
+      root.prepend(group);
+    });
+    await page.locator('#inspector-toggle').click();
+    await page.locator('#tab-snapshot').click();
+    await page.locator('#inspect').click();
+    const snapshot = await page.locator('#snapshot').innerText();
+    assert.match(snapshot, /region "操作列表"/);
+    assert.match(snapshot, /list "服务"/);
+    assert.match(snapshot, /listitem "资源甲 详情"\n\s+- button "详情" \[ref=e\d+\]/);
+    assert.match(snapshot, /listitem "资源乙 详情"\n\s+- button "详情" \[ref=e\d+\]/);
+    assert.ok(!snapshot.includes('隐藏操作'));
+    assert.ok(!snapshot.includes('启动 Agent'));
+    assert.equal((snapshot.match(/button "详情"/g) || []).length, 2);
+  });
+});
+
+test('custom select remains atomic even after its popover opens', async t => {
+  await scenario(t, 'atomic-select', async page => {
+    await page.locator('#region-select').click();
+    await page.locator('#inspector-toggle').click();
+    await page.locator('#tab-snapshot').click();
+    await page.locator('#inspect').click();
+    const snapshot = await page.locator('#snapshot').innerText();
+    assert.match(snapshot, /combobox "区域" \[ref=e\d+\]/);
+    assert.ok(!snapshot.includes('option "华东-上海一" [ref='));
+  });
+});
