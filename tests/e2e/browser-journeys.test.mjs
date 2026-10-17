@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
-import { loadIsolatedPage } from './isolated-page.mjs';
+import { loadIsolatedPage, compiledModuleUrl } from './isolated-page.mjs';
 
 // Real browser journeys on the compiled, locally-served application.
 // This is intentionally independent from agent-core and the demonstration planner.
@@ -163,5 +163,83 @@ test('custom select remains atomic even after its popover opens', async t => {
     const snapshot = await page.locator('#snapshot').innerText();
     assert.match(snapshot, /combobox "区域" \[ref=e\d+\]/);
     assert.ok(!snapshot.includes('option "华东-上海一" [ref='));
+  });
+});
+
+
+test('an approved target moved outside Sandbox is never clicked', async t => {
+  await scenario(t, 'scope-after-approval', async page => {
+    const urls = process.env.KUMO_E2E_ISOLATED === '1'
+      ? [await compiledModuleUrl(resolve(root, 'dist/packages/dom-engine/src/browser-dom-page.js')),
+         await compiledModuleUrl(resolve(root, 'dist/packages/agent-core/src/run-agent.js')),
+         await compiledModuleUrl(resolve(root, 'dist/packages/agent-core/src/action-policy.js'))]
+      : ['/dist/packages/dom-engine/src/browser-dom-page.js',
+         '/dist/packages/agent-core/src/run-agent.js',
+         '/dist/packages/agent-core/src/action-policy.js'];
+    const result = await page.evaluate(async ([engineUrl, runnerUrl, policyUrl]) => {
+      const [{ BrowserDomPage }, { runAgent }, { SandboxActionPolicy }] = await Promise.all([
+        import(engineUrl), import(runnerUrl), import(policyUrl)
+      ]);
+      const root = document.getElementById('sandbox');
+      const outside = document.createElement('section');
+      document.body.append(outside);
+      const button = document.createElement('button');
+      button.textContent = '创建资源';
+      root.prepend(button);
+      let clicks = 0;
+      button.addEventListener('click', () => { clicks++; });
+      const engine = new BrowserDomPage(root);
+      const planner = { async decide(task, snapshot, history) {
+        if (history.length) return { kind: 'fail', reason: '目标已移动' };
+        return { kind: 'act', reason: '尝试创建', action: {
+          kind: 'click', ref: snapshot.elements.find(el => el.name === '创建资源').ref
+        } };
+      } };
+      const run = await runAgent('创建资源', engine, planner, {
+        actionPolicy: new SandboxActionPolicy(),
+        requestApproval: async () => { outside.append(button); return true; }
+      });
+      outside.remove();
+      return { status: run.status, clicks, firstError: run.history[0]?.error };
+    }, urls);
+    assert.deepEqual(result, { status: 'failed', clicks: 0, firstError: 'stale_ref' });
+  });
+});
+
+test('stale input and scroll refs cannot overwrite changed or out-of-scope DOM', async t => {
+  await scenario(t, 'stale-value-and-scroll', async page => {
+    const url = process.env.KUMO_E2E_ISOLATED === '1'
+      ? await compiledModuleUrl(resolve(root, 'dist/packages/dom-engine/src/browser-dom-page.js'))
+      : '/dist/packages/dom-engine/src/browser-dom-page.js';
+    const result = await page.evaluate(async url => {
+      const { BrowserDomPage } = await import(url);
+      const root = document.getElementById('sandbox');
+      const outside = document.createElement('section');
+      document.body.append(outside);
+      const input = document.createElement('input');
+      input.setAttribute('aria-label', '测试输入');
+      input.value = 'safe';
+      const target = document.createElement('div');
+      target.setAttribute('role', 'button');
+      target.setAttribute('aria-label', '待滚动元素');
+      target.textContent = '可移动';
+      root.prepend(target, input);
+      const engine = new BrowserDomPage(root);
+      const observed = await engine.observe();
+      const inputRef = observed.elements.find(x => x.name === '测试输入').ref;
+      const scrollRef = observed.elements.find(x => x.name === '待滚动元素').ref;
+      input.value = 'modified during model decision';
+      let inputError, scrollError;
+      try { await engine.execute({ kind: 'input', ref: inputRef, value: 'overwrite' }, observed); }
+      catch (e) { inputError = e.message; }
+      outside.append(target);
+      try { await engine.execute({ kind: 'scroll', direction: 'down', ref: scrollRef }, observed); }
+      catch (e) { scrollError = e.message; }
+      outside.remove(); input.remove();
+      return { inputError, scrollError, remains: input.value };
+    }, url);
+    assert.deepEqual(result, {
+      inputError: 'stale_ref', scrollError: 'stale_ref', remains: 'modified during model decision'
+    });
   });
 });

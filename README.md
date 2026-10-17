@@ -77,6 +77,8 @@ The initial repository is public. A software license has not yet been selected; 
 
 ### Action and task verification
 
+Before executing, the DOM engine also confirms that the approved ref remains inside the authorized Sandbox and that its observed role, name and value have not changed. Otherwise it requests a fresh observation instead of executing.
+
 Every successful action is followed by `settle()` and a **new observation**. Input/select actions verify the observed target value; clicks report `changed` or `unconfirmed` without claiming that a task succeeded. An optional independent `TaskVerifierPort` checks any planner `done` decision; the Playground enables it through `DemoTaskVerifier` for all four supported tasks. If independent evidence is missing, the run fails rather than reporting success. See [verification design](docs/architecture/action-verification.md).
 
 ## Local LLM Mode (opt-in, development only)
