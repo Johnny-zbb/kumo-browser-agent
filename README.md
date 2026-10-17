@@ -109,3 +109,7 @@ The Node-only `PlaywrightPagePort` connects an explicitly authorized Chromium pa
 - This is a **local/development runtime**, not an isolation boundary for hostile JavaScript, arbitrary remote browsing, authentication, or third-party sites. A trusted/isolated profile and controlled test pages are required; no arbitrary cross-origin iframe control, no Vision.
 
 See [runtime architecture](docs/architecture/playwright-runtime.md), the opt-in `scripts/run-browser-agent.mjs` CLI, and `tests/e2e/playwright-runtime.test.mjs` for an end-to-end fixture.
+
+### 免费 LLM API（Groq / Gemini）
+
+现有的 OpenAI-compatible Node Bridge 支持免费 API，不需要将密钥交给聊天助手。复制 `.env.example` 到 Git 忽略的 `.env.local`，在本地填写 Key，运行 `npm run dev:llm`。安装步骤、额度和数据隐私边界见 [免费 LLM 接入指南](docs/guides/free-llm-api.md)。**不要把本地 Bridge 暴露在公网，也不要处理包含秘密的真实控制台页面。**
