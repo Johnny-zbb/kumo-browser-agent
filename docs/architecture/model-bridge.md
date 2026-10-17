@@ -11,6 +11,7 @@
 ## Run locally
 
 ```bash
+# Example using a locally served compatible model; do not commit credentials.
 export KUMO_LLM_ENDPOINT=http://127.0.0.1:1234/v1/chat/completions
 export KUMO_LLM_MODEL=local-model
 export KUMO_LLM_API_KEY=your-local-token
@@ -23,7 +24,8 @@ Open the developer inspector, choose **LLM · 本地模型**, then enter a task 
 
 - `GET /api/agent/config`: `{llmConfigured:boolean}` only; never reveals the endpoint, model key or secret.
 - `POST /api/agent/decision`: same-origin JSON with `task`, `snapshot`, and last 4 traces. The server validates shape/size; returns a validated **decision**, not a request to execute actions.
-- Disallows cross-origin POST, limits body size, requires local Host, sets `no-store`, and bounds in-flight model requests. This endpoint is a local development service, **not safe to publish directly** without authentication, CSRF protections, rate limits, origin policy, and tenancy isolation.
+- Disallows cross-origin POST, limits body size, requires local Host, sets `no-store`, and bounds in-flight model requests.
+- Static assets are served from a strict allowlist of HTML/CSS and browser-only compiled JS. Private files, source modules, credentials, dependency trees and compiled Node model-client code are not reachable through static routes. All static routes validate local Host/Origin and return restrictive CSP/no-store headers. See `scripts/playground-static.mjs` and `tests/playground-static.test.mjs`. This endpoint is a local development service, **not safe to publish directly** without authentication, CSRF protections, rate limits, origin policy, and tenancy isolation.
 
 ## Current limits
 

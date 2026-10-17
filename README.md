@@ -17,14 +17,15 @@ Visit `http://localhost:4173`.
 
 ### Agent Mode animation
 
-Press **开始任务** (or any quick-task chip): a circular reveal expands from the trigger, then a rotating multicolor viewport frame indicates that the Agent is working. A live activity pill reports the observed turn and action. The frame is removed on completion, failure, cancellation, or exhaustion of the turn budget. The controlled page and agent decisions are unchanged; this effect is purely a Playground presentation. `prefers-reduced-motion` disables the reveal and rotation.
+Press **启动 Agent** in the fixed Sandbox composer: a circular reveal expands from the trigger, then a rotating multicolor **Sandbox-scoped** frame indicates that the Agent is working. A live activity pill reports the observed turn and action. The frame is removed on completion, failure, cancellation, or exhaustion of the turn budget. The controlled page and agent decisions are unchanged; this effect is purely a Playground presentation. `prefers-reduced-motion` disables the reveal and rotation.
 
 The circular reveal is adapted from [Lucian UX/UI Prompt #045](https://lucianlabs.dev/uxui-prompt/#045), MIT License © 2026 Seokwoooo, with attribution retained in source. The viewport frame is a custom addition.
- Run one of four demonstration tasks: search instances, create a mock instance, change the custom region selector, or scroll to the bottom. Actions operate only inside the local demonstration page.
+
+Run one of four demonstration tasks: search instances, create a mock instance, change the custom region selector, or scroll to the bottom. Actions operate only inside the local demonstration page.
 
 ## Browser E2E regression tests
 
-Five Chromium journeys exercise the **compiled application**: custom region selection,
+Chromium journeys exercise the **compiled application**: custom region selection,
 search, create instance, scrolling to the bottom and cancelling during the Agent Mode
 transition. A failed journey writes a screenshot and error details to `test-results/e2e/`.
 
@@ -44,12 +45,10 @@ prove the HTTP server path. For system-installed Chromium, optionally set
 ## Workspace
 
 - `packages/agent-core`: task language (`PageSnapshot`, `PageAction`, `Decision`) and the agent loop. No browser DOM dependencies.
-- `packages/dom-engine`: in-page semantic tree + backward-compatible flat action index, stable refs and action implementation, including `ComponentAdapterRegistry` and the tested ARIA-combobox `selectOption` adapter.
+- `packages/dom-engine`: in-page DOM snapshot and action implementation, including `ComponentAdapterRegistry` and the tested ARIA-combobox `selectOption` adapter.
 - `apps/playground`: standalone controlled demo and deterministic planner.
 - `tests`: core loop tests; includes stale refs, cancellation, no-progress detection, and max turns.
 - `docs/architecture`: design decisions and next milestones.
-
-See [Semantic Snapshot v0.3](docs/architecture/semantic-snapshot.md) for hierarchy, limits and extension rules.
 
 ## Design principles
 
@@ -71,18 +70,14 @@ The initial repository is public. A software license has not yet been selected; 
 
 ## Next steps
 
-1. Maintain the [Component Adapter contract](docs/architecture/component-adapters.md) and add browser E2E coverage in CI (a local Chromium smoke test passed).
-2. Adapt selected, reviewed `kiki-anti` DOM SDK techniques behind the `dom-engine` interface; test real Ant Design/Tiny widgets as separate fixture-backed adapters.
-3. Add action policies, task verification and LLM planner with schema validation.
-4. Introduce visual observations and a browser extension/runtime after the DOM path stabilizes.
+1. Add an authorized browser runtime for non-demo pages, with explicit origin-scoped permissions and browser E2E.
+2. Evaluate a real LLM against stable fixtures, including failures, retries and unknown tasks.
+3. Extend standard HTML/ARIA semantics and add real Ant Design/Tiny fixtures.
+4. Add visual observations and an explicit DOM/Vision fallback after the browser runtime is proven.
 
 ### Action and task verification
 
 Every successful action is followed by `settle()` and a **new observation**. Input/select actions verify the observed target value; clicks report `changed` or `unconfirmed` without claiming that a task succeeded. An optional independent `TaskVerifierPort` checks any planner `done` decision; the Playground enables it through `DemoTaskVerifier` for all four supported tasks. If independent evidence is missing, the run fails rather than reporting success. See [verification design](docs/architecture/action-verification.md).
-
-### Optional real-model planning (server-side)
-
-`LlmPlanner` accepts a model-port implementation and emits a strictly validated `Decision` from the semantic snapshot. A Node-only OpenAI-compatible transport and `scripts/llm-plan.mjs` can plan one action against a saved snapshot. The Playground **still defaults to `DemoPlanner`**; it does not expose model keys or run arbitrary third-party pages. See [LLM Planner design](docs/architecture/llm-planner.md).
 
 ## Local LLM Mode (opt-in, development only)
 
@@ -95,3 +90,10 @@ KUMO_LLM_API_KEY=your-local-token npm run dev
 ```
 
 The API key is never sent to the browser. The server returns validated **single-step decisions only**. Browser execution is scoped to the local Sandbox and guarded by `SandboxActionPolicy`: destructive targets and credential fields are denied; commit/submit operations request a **human approval click** before executing. Cancelling aborts the model request or pending approval. For detailed boundaries, read [Model Bridge & Action Policy](docs/architecture/model-bridge.md). This local development bridge is **not** a production-ready authenticated browser automation API.
+
+
+### Local Playground HTTP serving (development-only)
+
+The Node server serves **only** the Playground HTML, stylesheet and compiled browser-side modules under `dist/apps/playground`, `dist/packages/agent-core`, and `dist/packages/dom-engine`. It does not expose repository source, `.env`, dependencies, tests, server files or compiled `llm-client` code. It also rejects unexpected Host/Origin headers and refuses symlink escapes, while setting restrictive security headers.
+
+This is a defense-in-depth boundary for local development, **not a production security audit**. Do not expose the Node bridge on a public network. The whitelist is in `scripts/playground-static.mjs`; add a route only after verifying it is safe for browser consumption. `npm test` includes regression tests for private-file access and Host-header attacks.
