@@ -90,9 +90,9 @@ test('LLM mode is served only by local Node bridge; user approves state-changing
     await page.locator('#task').fill('创建一个实例');
     await page.locator('#run').click();
     await page.locator('#agent-approval:not([hidden])').waitFor();
-    assert.equal(await page.locator('#create-dialog').isVisible(),false);
-    await page.locator('#approve-action').click();
-    await page.locator('#agent-approval:not([hidden])').waitFor();
+    // Opening the dialog is harmless; approving the actual submit is required.
+    assert.equal(await page.locator('#create-dialog').isVisible(),true);
+    assert.equal(await page.locator('.resource-row').count(),3);
     await page.locator('#approve-action').click();
     await page.waitForFunction(() => document.querySelector('#status')?.textContent?.startsWith('COMPLETED'));
     assert.match(await page.locator('#create-feedback').innerText(),/已创建实例：kumo-demo/);
