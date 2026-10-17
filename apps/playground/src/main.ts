@@ -69,7 +69,7 @@ async function begin(task: string): Promise<void> {
   $('inspect').setAttribute('disabled', '');
   $('timeline').replaceChildren();
   $('status').textContent = `启动中 · ${task}`;
-  let finalStatus: 'completed' | 'failed' | 'stopped' | 'max_turns' | 'error' = 'error';
+  let finalStatus: 'completed' | 'failed' | 'stopped' | 'max_turns' | 'approval_required' | 'error' = 'error';
   try {
     inspector.setOpen(false);
     await agentMode.enter(runButton);

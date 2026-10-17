@@ -1,5 +1,7 @@
 import type { AgentTrace, PagePort, PageSnapshot, PlannerPort, RunResult, TaskVerifierPort } from './types.js';
 import { verifyActionEffect } from './action-verifier.js';
+import type { ActionPolicyPort, ActionPolicyResult } from './action-policy.js';
+import type { PageAction } from './types.js';
 
 export interface AgentRunOptions {
   maxTurns?: number;
@@ -8,6 +10,8 @@ export interface AgentRunOptions {
   onObserve?: (snapshot: PageSnapshot, turn: number) => void;
   /** When present, a planner `done` is not trusted without independent evidence. */
   taskVerifier?: TaskVerifierPort;
+  actionPolicy?: ActionPolicyPort;
+  requestApproval?: (request: ActionPolicyResult, action: PageAction, snapshot: PageSnapshot, signal?: AbortSignal) => Promise<boolean>;
 }
 
 /** Deep module: callers don't know about looping, retry policy, snapshot freshness or stop conditions. */
@@ -65,6 +69,37 @@ export async function runAgent(task: string, page: PagePort, planner: PlannerPor
       return result('failed', '页面没有进展：连续重复相同动作和观察结果');
     }
 
+    if (options.signal?.aborted) return result('stopped', '用户取消');
+    if (options.actionPolicy) {
+      const evaluation = options.actionPolicy.assess(decision.action, snapshot);
+      trace.actionPolicy = { ...evaluation };
+      if (evaluation.decision === 'deny') {
+        trace.actionResult = 'skipped';
+        history.push(trace);
+        options.onTrace?.(trace);
+        return result('failed', `安全策略拒绝动作：${evaluation.reason}`);
+      }
+      if (evaluation.decision === 'confirm') {
+        if (!options.requestApproval) {
+          history.push(trace);
+          options.onTrace?.(trace);
+          return result('approval_required', `缺少人工确认：${evaluation.reason}`);
+        }
+        let allowed = false;
+        try { allowed = await options.requestApproval(evaluation, decision.action, snapshot, options.signal); }
+        catch (error) {
+          if (options.signal?.aborted) return result('stopped', '用户取消');
+          trace.error = `approval_error: ${error instanceof Error ? error.message : String(error)}`;
+        }
+        if (options.signal?.aborted) return result('stopped', '用户取消');
+        trace.actionPolicy.approved = allowed;
+        if (!allowed) {
+          history.push(trace);
+          options.onTrace?.(trace);
+          return result('failed', `用户未批准操作：${evaluation.reason}`);
+        }
+      }
+    }
     if (options.signal?.aborted) return result('stopped', '用户取消');
     try {
       await page.execute(decision.action, snapshot);
