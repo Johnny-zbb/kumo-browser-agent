@@ -1,10 +1,13 @@
-import type { AgentTrace, PagePort, PageSnapshot, PlannerPort, RunResult } from './types.js';
+import type { AgentTrace, PagePort, PageSnapshot, PlannerPort, RunResult, TaskVerifierPort } from './types.js';
+import { verifyActionEffect } from './action-verifier.js';
 
 export interface AgentRunOptions {
   maxTurns?: number;
   signal?: AbortSignal;
   onTrace?: (trace: AgentTrace) => void;
   onObserve?: (snapshot: PageSnapshot, turn: number) => void;
+  /** When present, a planner `done` is not trusted without independent evidence. */
+  taskVerifier?: TaskVerifierPort;
 }
 
 /** Deep module: callers don't know about looping, retry policy, snapshot freshness or stop conditions. */
@@ -34,9 +37,21 @@ export async function runAgent(task: string, page: PagePort, planner: PlannerPor
 
     const trace: AgentTrace = { turn, snapshot, decision, actionResult: 'skipped' };
     if (decision.kind === 'done' || decision.kind === 'fail') {
+      if (decision.kind === 'done' && options.taskVerifier) {
+        try {
+          trace.taskVerification = await options.taskVerifier.verify(task, snapshot);
+        } catch (error) {
+          trace.taskVerification = { status: 'inconclusive', reason: `验证器异常：${error instanceof Error ? error.message : String(error)}` };
+        }
+        if (options.signal?.aborted) return result('stopped', '用户取消');
+      }
       history.push(trace);
       options.onTrace?.(trace);
-      return result(decision.kind === 'done' ? 'completed' : 'failed', decision.reason);
+      if (decision.kind === 'fail') return result('failed', decision.reason);
+      if (trace.taskVerification && trace.taskVerification.status !== 'passed') {
+        return result('failed', `无法确认任务完成：${trace.taskVerification.reason}`);
+      }
+      return result('completed', trace.taskVerification?.reason ?? decision.reason);
     }
 
     // Avoid infinite loops if a plan repeatedly performs the same action without changing observation.
@@ -53,10 +68,30 @@ export async function runAgent(task: string, page: PagePort, planner: PlannerPor
     try {
       await page.execute(decision.action, snapshot);
       trace.actionResult = 'ok';
+      if (options.signal?.aborted) {
+        history.push(trace);
+        options.onTrace?.(trace);
+        return result('stopped', '用户取消');
+      }
+      await page.settle();
+      if (options.signal?.aborted) {
+        history.push(trace);
+        options.onTrace?.(trace);
+        return result('stopped', '用户取消');
+      }
+      // Execute success only means the browser accepted an event. Re-observe.
+      const after = await page.observe();
+      if (options.signal?.aborted) {
+        history.push(trace);
+        options.onTrace?.(trace);
+        return result('stopped', '用户取消');
+      }
+      trace.actionVerification = verifyActionEffect(decision.action, snapshot, after);
       history.push(trace);
       options.onTrace?.(trace);
-      if (options.signal?.aborted) return result('stopped', '用户取消');
-      await page.settle();
+      if (trace.actionVerification.status === 'mismatch') {
+        return result('failed', `动作结果与预期不符：${trace.actionVerification.reason}`);
+      }
     } catch (error) {
       trace.actionResult = 'error';
       trace.error = error instanceof Error ? error.message : String(error);

@@ -75,3 +75,7 @@ The initial repository is public. A software license has not yet been selected; 
 2. Adapt selected, reviewed `kiki-anti` DOM SDK techniques behind the `dom-engine` interface; test real Ant Design/Tiny widgets as separate fixture-backed adapters.
 3. Add action policies, task verification and LLM planner with schema validation.
 4. Introduce visual observations and a browser extension/runtime after the DOM path stabilizes.
+
+### Action and task verification
+
+Every successful action is followed by `settle()` and a **new observation**. Input/select actions verify the observed target value; clicks report `changed` or `unconfirmed` without claiming that a task succeeded. An optional independent `TaskVerifierPort` checks any planner `done` decision; the Playground enables it through `DemoTaskVerifier` for all four supported tasks. If independent evidence is missing, the run fails rather than reporting success. See [verification design](docs/architecture/action-verification.md).
