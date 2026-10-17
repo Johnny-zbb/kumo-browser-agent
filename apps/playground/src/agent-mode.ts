@@ -39,7 +39,7 @@ export class AgentModeView {
     }
   }
 
-  leave(status: 'completed' | 'failed' | 'stopped' | 'max_turns' | 'error'): void {
+  leave(status: 'completed' | 'failed' | 'stopped' | 'max_turns' | 'approval_required' | 'error'): void {
     ++this.generation;
     this.stage.classList.remove('agent-entering', 'agent-active');
     this.hud.hidden = true;
@@ -48,6 +48,7 @@ export class AgentModeView {
       failed: 'TASK FAILED',
       stopped: 'TASK STOPPED',
       max_turns: 'TURN LIMIT REACHED',
+      approval_required: 'APPROVAL REQUIRED',
       error: 'AGENT ERROR'
     })[status];
   }
