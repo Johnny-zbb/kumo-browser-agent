@@ -31,6 +31,15 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - name: Run 16-case deterministic Browser Agent evaluation
+        run: npm run eval:baseline
+      - name: Upload Browser Agent evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-agent-eval
+          path: test-results/eval/
+          if-no-files-found: ignore
       - name: Upload failed browser evidence
         if: failure()
         uses: actions/upload-artifact@v4

@@ -14,7 +14,9 @@
     "test": "npm run build && node --test tests/*.test.mjs",
     "dev": "npm run build && node scripts/dev-server.mjs",
     "test:e2e": "npm run build && node --test --test-concurrency=1 tests/e2e/*.test.mjs",
-    "dev:llm": "npm run build && node --env-file=.env.local scripts/dev-server.mjs"
+    "dev:llm": "npm run build && node --env-file=.env.local scripts/dev-server.mjs",
+    "eval:baseline": "npm run build && node scripts/eval-browser-agent.mjs --mode=baseline",
+    "eval:llm": "npm run build && node --env-file=.env.local scripts/eval-browser-agent.mjs --mode=llm"
   },
   "devDependencies": {
     "typescript": "^5.8.3",
