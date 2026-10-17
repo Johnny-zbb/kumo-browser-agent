@@ -69,18 +69,25 @@ export interface TaskVerifierPort {
   verify(task: string, snapshot: PageSnapshot): TaskVerification | Promise<TaskVerification>;
 }
 
+export interface ActionPolicyTrace {
+  decision: 'allow' | 'confirm' | 'deny';
+  reason: string;
+  approved?: boolean;
+}
+
 export interface AgentTrace {
   turn: number;
   snapshot: PageSnapshot;
   decision: Decision;
   actionResult: 'ok' | 'error' | 'skipped';
   actionVerification?: ActionVerification;
+  actionPolicy?: ActionPolicyTrace;
   taskVerification?: TaskVerification;
   error?: string;
 }
 
 export interface RunResult {
-  status: 'completed' | 'failed' | 'stopped' | 'max_turns';
+  status: 'completed' | 'failed' | 'stopped' | 'max_turns' | 'approval_required';
   reason: string;
   history: readonly AgentTrace[];
 }
