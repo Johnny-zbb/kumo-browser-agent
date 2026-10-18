@@ -123,4 +123,4 @@ npm run eval:baseline    # deterministic scripted planner, all 16 local Chromium
 npm run eval:llm         # opt-in REAL LLM, four diverse scenarios by default, requires .env.local
 ```
 
-The evaluator reports per-task completion, independent goal verification, latency, turn count, model call count and failure classes as JSON under `test-results/eval/`. **Baseline success is a regression signal, not a model success rate.** LLM runs are never enabled in CI, need your local API key, and only send synthetic test-page content to the provider. See [evaluation guide](docs/guides/browser-agent-eval.md).
+The evaluator reports per-task completion, independent goal verification, latency, turn count, model call count and failure classes as JSON under `test-results/eval/`. Add `-- --trace=true` to capture per-turn target refs, semantic row context, completion observations and model-call timing without raw prompts or responses. **Baseline success is a regression signal, not a model success rate.** LLM runs are never enabled in CI, need your local API key, and only send synthetic test-page content to the provider. See [evaluation guide](docs/guides/browser-agent-eval.md).

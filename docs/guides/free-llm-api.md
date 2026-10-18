@@ -39,9 +39,25 @@ Gemini 官方提供 [OpenAI-compatible 端点](https://ai.google.dev/gemini-api/
 - Action Policy、Ref 校验和审批是开发期防护措施，无法完全防御恶意网页或提示注入。
 - 模型配置无效时检查 `.env.local` 是否放在项目根目录、进程是否重启。`llm_http_401` 常表示 API Key 无效；`llm_http_429` 表示可能触发额度限制。
 
+## Windows PowerShell 代理
+
+如果模型接口需要代理，先在当前 PowerShell 会话中配置代理，再启动评测。下面的命令适用于 Node 24+。将示例地址 `http://127.0.0.1:7890` 替换为你的 HTTP 代理地址，保留 `NO_PROXY` 中的本地地址。
+
+```powershell
+$env:HTTPS_PROXY = 'http://127.0.0.1:7890'
+$env:HTTP_PROXY = $env:HTTPS_PROXY
+$env:NODE_USE_ENV_PROXY = '1'
+$env:NO_PROXY = 'localhost,127.0.0.1,::1'
+npm run eval:llm -- --trace=true
+```
+
+这些变量只影响当前会话和子进程。关闭 PowerShell 后失效。仅开启 Windows 系统代理，不能保证 Node 的请求使用代理。`NODE_USE_ENV_PROXY` 的行为见 [Node 官方文档](https://nodejs.org/api/cli.html#node_use_env_proxy1)。
+
+本次本地排查中，直连 Groq 返回 `403`，使用已配置的代理后返回 `200`。其他环境出现 `403` 时，仍需检查实际响应，不能仅凭状态码认定原因。连接正常后，可用 `--trace=true` 分析决策失败，操作见[评测指南](browser-agent-eval.md#diagnose-a-failed-model-run)。
+
 ## 官方链接与验证范围
 
 - [Groq OpenAI 兼容性](https://console.groq.com/docs/openai)、[免费限流](https://console.groq.com/docs/rate-limits)、[数据处理](https://console.groq.com/docs/your-data)
 - [Gemini 免费层](https://ai.google.dev/gemini-api/docs/pricing)、[兼容端点](https://ai.google.dev/gemini-api/docs/openai)
 
-以上提供商的端点、模型与免费层信息已查证，但没有任何真实 API Key，因此**尚未执行真实模型调用**。现有 CI 的 LLM E2E 使用模拟模型验证交互流程。
+现有 CI 的 LLM E2E 使用模拟模型验证交互流程。真实模型结果以本地生成的报告为准，应同时记录模型、场景和运行条件。一次合成场景评测的通过率，不能代表真实网页上的成功率。

@@ -51,8 +51,33 @@ The **LLM mode defaults to four representative tasks** (one per category), to li
 npm run eval:llm -- --cases=search-agent,details-kumo --limit=2
 ```
 
-`--cases` is a comma-separated list of stable IDs in `eval/fixtures.mjs`; `--limit` controls the total executed cases (1–16); `--max-turns` bounds each task (1–30); `--report` selects the local JSON output. LLM mode requires all three `KUMO_LLM_*` variables. Reports do not record raw snapshots, model responses, API keys or HTTP headers, but they include task IDs and failure reasons; inspect before sharing externally. **Failed evaluations exit nonzero and still write their report.**
+`--cases` is a comma-separated list of stable IDs in `eval/fixtures.mjs`; `--limit` controls the total executed cases (1–16); `--max-turns` bounds each task (1–30); `--report` selects the local JSON output. `--trace=true` adds bounded turn diagnostics (off by default; `--trace=false` explicitly disables them). LLM mode requires all three `KUMO_LLM_*` variables. Reports do not record raw snapshots, model responses, API keys or HTTP headers, but they include task IDs and failure reasons; inspect before sharing externally. **Failed evaluations exit nonzero and still write their report.**
+
+If Node needs a proxy to reach your provider, see the [Windows PowerShell proxy setup](free-llm-api.md#windows-powershell-代理). Keep localhost traffic direct so Chromium can load the synthetic fixtures.
+
+## Diagnose a failed model run
+
+Keep the initial report and rerun the failing case with a separate report path:
+
+```bash
+npm run eval:llm -- --cases=details-agent --limit=1 --trace=true --report=test-results/eval/details-trace.json
+```
+
+Every case reports `attemptedTurns` (observed turns that reached the planner), `modelLatencyMs` (total wall time inside model calls, including HTTP/response handling) and `fixtureCompleted` (the final independent DOM state). Existing `turns` still counts emitted Agent traces, so a first-turn HTTP/JSON failure can have `turns: 0` and `attemptedTurns: 1`. Model-call time is separate from end-to-end `latencyMs`; neither is a token count or pure server inference time.
+
+With tracing enabled, each `records[].trace[]` entry includes:
+
+- `turn`, `snapshotId` and `completionTextObserved` before the decision.
+- Per-turn model-call count and latency, plus an allowlisted `errorCode` when planning throws. A request/parse failure retains the attempted turn with `decision: null`.
+- The validated decision kind and action kind/ref/direction, selected target name/role and up to 12 semantic ancestors. Table row context distinguishes identically named buttons.
+- Dispatch, action verification, task verification and policy outcomes when an Agent trace was emitted.
+
+Diagnostics omit input/select values, free-form model reasons, prompts and full page text. Target/ancestor labels are bounded synthetic page content. Unknown exception messages become `unclassified_error` in diagnostics; the existing top-level case `reason` remains a bounded error summary and still needs review before sharing.
+
+`no_progress` identifies the repeated-action guard separately from other `planner_failed` outcomes. A completed fixture with repeated clicks can show `fixtureCompleted: true` and `completionTextObserved: true` while **still failing**: the planner must propose `done`, and the independent verifier must pass. Use this evidence to distinguish a wrong target from failure to stop after completion. Tracing does not change execution, retries, approval policy or scoring. These are additive schema-v1 fields; report consumers should tolerate additional fields and failure categories.
 
 ## Interpretation and future work
+
+A [dated local smoke-test note](llm-smoke-2026-10-18.md) records the first 3/4 run and a later 4/4 run with diagnostics, including the limits of that comparison.
 
 A 16/16 baseline proves the scripted controller can operate these fixtures; **it does not imply 100% success for Groq, Gemini or real websites**. Compare only reports from the same fixture version, environment, model and settings. Subsequent evaluation iterations should include long pages, nested scrolling, adverse/untrusted content, transient failures and complex UI component libraries, with a separate human-reviewed scoring rubric for real pages. Keep safety-denial tests separate from the completion rate to avoid incentivizing inappropriate actions.

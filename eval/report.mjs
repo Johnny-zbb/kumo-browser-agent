@@ -31,6 +31,7 @@ export function classifyFailure({ status, reason, error }) {
   if (status === 'approval_required') return 'approval_required';
   if (status === 'max_turns') return 'max_turns';
   if (status === 'stopped') return 'stopped';
+  if (/页面没有进展/.test(reason)) return 'no_progress';
   if (/model_|llm_http_|规划|决策失败/.test(reason)) return 'model_error';
   if (/动作失败|动作结果|stale_ref|stale_snapshot/.test(reason)) return 'action_error';
   if (/无法确认|验证/.test(reason)) return 'verification_failed';
