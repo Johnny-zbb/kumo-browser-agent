@@ -9,6 +9,7 @@ import { SandboxActionPolicy } from '../dist/packages/agent-core/src/action-poli
 import { runAgent } from '../dist/packages/agent-core/src/run-agent.js';
 import { EVAL_CASES, fixtureHtml, getEvalCase, createBaselinePlanner } from './fixtures.mjs';
 import { classifyFailure, summarizeEvaluation } from './report.mjs';
+import { diagnosticErrorCode, summarizeAgentTrace } from './diagnostics.mjs';
 
 async function startFixtureServer() {
   const server = createServer((req, res) => {
@@ -26,10 +27,11 @@ async function startFixtureServer() {
 }
 
 /** Only synthetic, explicitly authorized pages. An evaluation never approves risky actions. */
-export async function evaluateBrowserAgent({ mode = 'baseline', cases = EVAL_CASES, isolated = false, maxTurns = 8, modelConfig = null, decisionModel = null, chromiumExecutable = process.env.KUMO_CHROMIUM_EXECUTABLE } = {}) {
+export async function evaluateBrowserAgent({ mode = 'baseline', cases = EVAL_CASES, isolated = false, maxTurns = 8, includeTrace = false, modelConfig = null, decisionModel = null, chromiumExecutable = process.env.KUMO_CHROMIUM_EXECUTABLE } = {}) {
   if (!['baseline', 'llm'].includes(mode)) throw new Error('eval_invalid_mode');
   if (!Array.isArray(cases) || !cases.length || cases.some(item => !getEvalCase(item?.id))) throw new Error('eval_invalid_cases');
   if (!Number.isInteger(maxTurns) || maxTurns < 1 || maxTurns > 30) throw new Error('eval_invalid_max_turns');
+  if (typeof includeTrace !== 'boolean') throw new Error('eval_invalid_trace');
   // Require full credentials for real-model mode; no fallback to a fake model.
   if (mode === 'llm' && !decisionModel && (!modelConfig?.endpoint || !modelConfig?.model || !modelConfig?.apiKey)) throw new Error('eval_llm_not_configured');
   const startedAt = new Date().toISOString();
@@ -45,6 +47,10 @@ export async function evaluateBrowserAgent({ mode = 'baseline', cases = EVAL_CAS
       let runtime;
       let context;
       let modelCalls = 0;
+      let modelLatencyMs = 0;
+      let attemptedTurns = 0;
+      let currentTurn;
+      const turnTrace = [];
       let result;
       let verified = false;
       let error;
@@ -61,15 +67,43 @@ export async function evaluateBrowserAgent({ mode = 'baseline', cases = EVAL_CAS
         await runtime.start();
         if (isolated) await page.setContent(fixtureHtml(item));
         else await runtime.navigate(`${fixtureServer.origin}/case/${encodeURIComponent(item.id)}`);
-        const planner = mode === 'baseline'
+        const delegate = mode === 'baseline'
           ? createBaselinePlanner(item)
-          : new LlmPlanner({ complete(input) { modelCalls++; return model.complete(input); } });
+          : new LlmPlanner({ async complete(input) {
+            modelCalls++;
+            if (currentTurn) currentTurn.modelCalls++;
+            const start = performance.now();
+            try { return await model.complete(input); }
+            finally {
+              const elapsed = performance.now() - start;
+              modelLatencyMs += elapsed;
+              if (currentTurn) currentTurn.modelLatencyMs += Math.round(elapsed);
+            }
+          } });
+        const planner = { async decide(...args) {
+          try { return await delegate.decide(...args); }
+          catch (caught) {
+            if (currentTurn) currentTurn.errorCode = diagnosticErrorCode(caught);
+            throw caught;
+          }
+        } };
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 90_000);
         try {
           result = await runAgent(item.task, runtime, planner, {
             maxTurns,
             signal: controller.signal,
+            onObserve(snapshot, turn) {
+              attemptedTurns++;
+              if (!includeTrace) return;
+              currentTurn = { turn, snapshotId: snapshot.id,
+                completionTextObserved: snapshot.text.includes(`完成：${item.id}`),
+                modelCalls: 0, modelLatencyMs: 0, decision: null };
+              turnTrace.push(currentTurn);
+            },
+            onTrace(trace) {
+              if (currentTurn) Object.assign(currentTurn, summarizeAgentTrace(trace));
+            },
             actionPolicy: new SandboxActionPolicy(),
             taskVerifier: { async verify(_task, snapshot) {
               const state = await page.locator('[data-eval-result]').getAttribute('data-state');
@@ -98,8 +132,12 @@ export async function evaluateBrowserAgent({ mode = 'baseline', cases = EVAL_CAS
         failureKind: passed ? null : (pageErrors.length ? 'browser_page_error' : classifyFailure({ status, reason, error })),
         reason,
         turns: result?.history.length ?? 0,
+        attemptedTurns,
         modelCalls,
+        modelLatencyMs: Math.round(modelLatencyMs),
         latencyMs: Math.round(performance.now() - started),
+        fixtureCompleted: verified,
+        ...(includeTrace ? { trace: turnTrace } : {}),
         actions: result?.history.filter(trace => trace.decision.kind === 'act').map(trace => ({
           kind: trace.decision.action.kind, dispatch: trace.actionResult, effect: trace.actionVerification?.status ?? null
         })) ?? []
